@@ -10,6 +10,7 @@ PyVISA, produces the identical report as the in-process run. Swapping VISA for
 sockets for a simulation is a line in a YAML file, and this is what keeps that
 sentence true.
 """
+
 from __future__ import annotations
 
 import math
@@ -120,6 +121,7 @@ def test_the_session_survives_a_binary_transfer(visa_rack):
 
 def test_full_run_over_visa_matches_in_process(emulator, retarget, sim_bench_config):
     """The whole claim, through PyVISA."""
+
     def run(config) -> list[tuple[str, ...]]:
         bus = EventBus()
         recorder = ReportRecorder(bus)

@@ -43,6 +43,7 @@ PyVISA specifics worth knowing, all of which bite in practice:
   ``StatusCode.error_timeout`` — distinguishable from a real I/O failure, and
   the two deserve different handling.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -301,8 +302,14 @@ class _VisaDriver(BaseDriver):
 
 
 class VisaSignalGenerator(_VisaDriver):
-    def __init__(self, resource: str, backend: str = "@sim", sim_yaml: str | None = None,
-                 timeout_s: float = 10.0, name: str = "VISA-AFG") -> None:
+    def __init__(
+        self,
+        resource: str,
+        backend: str = "@sim",
+        sim_yaml: str | None = None,
+        timeout_s: float = 10.0,
+        name: str = "VISA-AFG",
+    ) -> None:
         super().__init__(resource, backend, sim_yaml, timeout_s, name)
 
     def configure_sine(
@@ -344,8 +351,14 @@ class VisaSignalGenerator(_VisaDriver):
 
 
 class VisaMultimeter(_VisaDriver):
-    def __init__(self, resource: str, backend: str = "@sim", sim_yaml: str | None = None,
-                 timeout_s: float = 10.0, name: str = "VISA-DMM") -> None:
+    def __init__(
+        self,
+        resource: str,
+        backend: str = "@sim",
+        sim_yaml: str | None = None,
+        timeout_s: float = 10.0,
+        name: str = "VISA-DMM",
+    ) -> None:
         super().__init__(resource, backend, sim_yaml, timeout_s, name)
 
     def measure_dc_voltage(self) -> float:
@@ -362,8 +375,14 @@ class VisaMultimeter(_VisaDriver):
 
 
 class VisaOscilloscope(_VisaDriver):
-    def __init__(self, resource: str, backend: str = "@sim", sim_yaml: str | None = None,
-                 timeout_s: float = 30.0, name: str = "VISA-OSC") -> None:
+    def __init__(
+        self,
+        resource: str,
+        backend: str = "@sim",
+        sim_yaml: str | None = None,
+        timeout_s: float = 30.0,
+        name: str = "VISA-OSC",
+    ) -> None:
         super().__init__(resource, backend, sim_yaml, timeout_s, name)
 
     def capture_relay(self, relay: str, gate_ms: float) -> Waveform:

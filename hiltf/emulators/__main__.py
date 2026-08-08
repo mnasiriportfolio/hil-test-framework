@@ -11,6 +11,7 @@ the one an in-process run gets.
 Ports come from the environment (``HILTF_SCPI_PORT`` / ``HILTF_DUT_PORT``) so
 compose can move them without editing anything.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,9 +40,7 @@ def _load_simulation(path: Path | None) -> tuple[SimConfig, int, float]:
     data: dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     instruments = data.get("instruments") or {}
     channels = int((instruments.get("signal_generator") or {}).get("channels", 2))
-    sample_rate = float(
-        (instruments.get("oscilloscope") or {}).get("sample_rate_hz", 50_000.0)
-    )
+    sample_rate = float((instruments.get("oscilloscope") or {}).get("sample_rate_hz", 50_000.0))
     return SimConfig.from_mapping(data.get("simulation")), channels, sample_rate
 
 

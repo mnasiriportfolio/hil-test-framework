@@ -25,6 +25,7 @@ to prevent:
    documented default instead of an aborted test run, and clears the error
    queue so the next query is not answered by the last one's error.
 """
+
 from __future__ import annotations
 
 import socket
@@ -150,7 +151,7 @@ class ScpiSocket:
         """
         try:
             return self.query(command)
-        except (TimeoutError, socket.timeout):
+        except TimeoutError:
             self._drain()
             return default
 

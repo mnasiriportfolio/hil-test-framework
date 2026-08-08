@@ -12,6 +12,7 @@ Unknown keys are rejected rather than ignored. A misspelled ``timout_s`` that
 silently keeps the default is the kind of thing that gets discovered at 2am on
 a bench, so it fails at load instead.
 """
+
 from __future__ import annotations
 
 import os
@@ -102,8 +103,7 @@ def _resolve(ctx: DriverContext, path: str | None) -> str | None:
 # --- builders -------------------------------------------------------------
 def _sim_signal_generator(raw: dict[str, Any], ctx: DriverContext) -> Any:
     _spec(raw, {"channels", "name"}, "sim_signal_generator")
-    return SimSignalGenerator(_bench(ctx, "sim_signal_generator"),
-                              name=raw.get("name", "SIM-AFG"))
+    return SimSignalGenerator(_bench(ctx, "sim_signal_generator"), name=raw.get("name", "SIM-AFG"))
 
 
 def _sim_multimeter(raw: dict[str, Any], ctx: DriverContext) -> Any:
@@ -131,24 +131,30 @@ _LAN_KEYS = {"address", "port", "timeout_s", "name"}
 def _lan_signal_generator(raw: dict[str, Any], ctx: DriverContext) -> Any:
     s = _spec(raw, _LAN_KEYS, "lan_signal_generator")
     return LanSignalGenerator(
-        host=str(s["address"]), port=int(s.get("port", 5025)),
-        timeout_s=float(s.get("timeout_s", 10.0)), name=s.get("name", "LAN-AFG"),
+        host=str(s["address"]),
+        port=int(s.get("port", 5025)),
+        timeout_s=float(s.get("timeout_s", 10.0)),
+        name=s.get("name", "LAN-AFG"),
     )
 
 
 def _lan_multimeter(raw: dict[str, Any], ctx: DriverContext) -> Any:
     s = _spec(raw, _LAN_KEYS, "lan_multimeter")
     return LanMultimeter(
-        host=str(s["address"]), port=int(s.get("port", 5025)),
-        timeout_s=float(s.get("timeout_s", 10.0)), name=s.get("name", "LAN-DMM"),
+        host=str(s["address"]),
+        port=int(s.get("port", 5025)),
+        timeout_s=float(s.get("timeout_s", 10.0)),
+        name=s.get("name", "LAN-DMM"),
     )
 
 
 def _lan_oscilloscope(raw: dict[str, Any], ctx: DriverContext) -> Any:
     s = _spec(raw, _LAN_KEYS, "lan_oscilloscope")
     return LanOscilloscope(
-        host=str(s["address"]), port=int(s.get("port", 5025)),
-        timeout_s=float(s.get("timeout_s", 30.0)), name=s.get("name", "LAN-OSC"),
+        host=str(s["address"]),
+        port=int(s.get("port", 5025)),
+        timeout_s=float(s.get("timeout_s", 30.0)),
+        name=s.get("name", "LAN-OSC"),
     )
 
 
@@ -182,8 +188,10 @@ def _visa_oscilloscope(raw: dict[str, Any], ctx: DriverContext) -> Any:
 def _udp_dut(raw: dict[str, Any], ctx: DriverContext) -> Any:
     s = _spec(raw, {"address", "port", "timeout_s", "retries", "name"}, "udp_dut")
     return BinaryUdpDut(
-        host=str(s["address"]), port=int(s.get("port", 50000)),
-        timeout_s=float(s.get("timeout_s", 2.0)), retries=int(s.get("retries", 3)),
+        host=str(s["address"]),
+        port=int(s.get("port", 50000)),
+        timeout_s=float(s.get("timeout_s", 2.0)),
+        retries=int(s.get("retries", 3)),
         name=s.get("name", "UDP-DUT"),
     )
 
@@ -224,15 +232,12 @@ def build_driver(role: str, raw: dict[str, Any], ctx: DriverContext) -> Any:
     builder = REGISTRY.get(str(name))
     if builder is None:
         raise DriverConfigError(
-            f"instruments.{role}: unknown driver '{name}'. "
-            f"Registered drivers: {sorted(REGISTRY)}"
+            f"instruments.{role}: unknown driver '{name}'. Registered drivers: {sorted(REGISTRY)}"
         )
     try:
         return builder(raw, ctx)
     except KeyError as exc:
-        raise DriverConfigError(
-            f"instruments.{role} ({name}): missing required key {exc}"
-        ) from exc
+        raise DriverConfigError(f"instruments.{role} ({name}): missing required key {exc}") from exc
 
 
 def needs_simulated_bench(instruments: dict[str, Any]) -> bool:

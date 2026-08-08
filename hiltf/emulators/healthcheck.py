@@ -10,6 +10,7 @@ half a second too early fails in a way that looks like a driver bug.
 It checks both protocols, because they are two separate listeners in one
 process and either could be the one that failed to bind.
 """
+
 from __future__ import annotations
 
 import argparse

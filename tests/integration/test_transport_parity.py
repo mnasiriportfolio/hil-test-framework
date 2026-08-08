@@ -7,6 +7,7 @@ the *same report* as a run in-process — step for step, value for value.
 If a transport ever starts changing a result, this fails, and the layering
 claim in the README stops being decorative.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -98,8 +99,9 @@ def test_reports_are_byte_identical(in_process, emulator, retarget):
     over_socket = run_everything(socket_config)
 
     def body(recorder: ReportRecorder) -> list[str]:
-        return [ln for ln in recorder.render_markdown().splitlines()
-                if not ln.startswith("_Generated")]
+        return [
+            ln for ln in recorder.render_markdown().splitlines() if not ln.startswith("_Generated")
+        ]
 
     assert body(over_socket) == body(in_process)
 

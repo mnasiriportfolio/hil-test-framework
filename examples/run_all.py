@@ -5,6 +5,7 @@
 No hardware, no Robot Framework needed — pure Python entry point so anyone can
 clone the repo and see it work in seconds.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

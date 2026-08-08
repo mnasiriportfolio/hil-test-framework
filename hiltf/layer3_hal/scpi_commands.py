@@ -13,6 +13,7 @@ IEEE 488.2 definite-length blocks for bulk waveform transfer. It is modelled on
 the command sets of mid-range benchtop generators and DMMs, without copying any
 specific vendor's proprietary extensions.
 """
+
 from __future__ import annotations
 
 import struct

@@ -5,6 +5,7 @@ that matter most here are the *negative* ones: a codec that decodes garbage
 into plausible numbers is worse than one that crashes, because the wrong number
 reaches a report.
 """
+
 from __future__ import annotations
 
 import struct
@@ -66,8 +67,9 @@ def test_numbers_are_little_endian_on_the_wire():
 # --- identity --------------------------------------------------------------
 def test_ident_round_trip():
     original = proto.Ident(fw_major=2, fw_minor=4, serial=100_247, name="HILTF-SIM-DUT")
-    decoded = proto.decode_ident_response(proto.decode(
-        proto.encode_ident_response(original)).payload)
+    decoded = proto.decode_ident_response(
+        proto.decode(proto.encode_ident_response(original)).payload
+    )
     assert decoded == original
     assert decoded.firmware == "2.4"
 
@@ -144,7 +146,7 @@ def test_logic_answers_identity(logic):
 
 
 def test_logic_reports_relays_caused_by_the_stimulus(logic, bench):
-    bench.configure_sine(2, 30.0 * 2.0 * (2 ** 0.5), 50.0)
+    bench.configure_sine(2, 30.0 * 2.0 * (2**0.5), 50.0)
     bench.set_output(2, True)
     frame = proto.decode(logic.execute(proto.decode(proto.encode(proto.REQ_RELAYS))))
     assert proto.decode_relay_response(frame.payload)["overcurrent"] is True

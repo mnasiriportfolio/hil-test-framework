@@ -20,6 +20,7 @@ The physics is intentionally simple but faithful in shape to a real bench:
   fixed detection latency, and latches it for a fixed hold time; the scope sees
   that relay line as a rising edge followed by a falling edge.
 """
+
 from __future__ import annotations
 
 import math
@@ -90,7 +91,7 @@ class SimConfig:
         identical YAML without importing anything from Layer 2.
         """
         raw = raw or {}
-        fields = {f: getattr(cls, "__dataclass_fields__")[f] for f in cls.__dataclass_fields__}
+        fields = {f: cls.__dataclass_fields__[f] for f in cls.__dataclass_fields__}
         unknown = set(raw) - set(fields)
         if unknown:
             raise ValueError(

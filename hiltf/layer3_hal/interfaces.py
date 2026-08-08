@@ -11,6 +11,7 @@ The repository ships four independent implementations of these same Protocols
 all of them. That is the whole point of the layer: Layer 2 has never been told
 which one it is holding.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

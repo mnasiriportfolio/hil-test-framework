@@ -6,6 +6,7 @@ means editing the CSV and flipping ``enabled`` — no code change. The math help
 here are deliberately pure functions so they can be unit-tested without any
 hardware or simulation.
 """
+
 from __future__ import annotations
 
 import csv

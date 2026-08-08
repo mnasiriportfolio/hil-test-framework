@@ -3,6 +3,7 @@
 No sockets here — the interpreter is deliberately pure, so the entire command
 set is testable at unit speed. The socket layer gets its own integration test.
 """
+
 from __future__ import annotations
 
 import math

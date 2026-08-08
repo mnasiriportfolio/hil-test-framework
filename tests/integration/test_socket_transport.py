@@ -6,6 +6,7 @@ cannot confirm that the driver survives a partial read, a response that arrives
 glued to the next one, a binary payload containing newline bytes, or a peer
 that says nothing at all. Those are the failures that actually happen.
 """
+
 from __future__ import annotations
 
 import math
@@ -180,8 +181,10 @@ def test_context_manager_closes_the_socket(emulator):
 
 def test_two_emulators_do_not_share_a_bench(sim_bench_config):
     """Ephemeral ports, isolated state — so tests can run in parallel."""
-    with bench_emulator(sim_config=sim_bench_config.sim) as a, \
-         bench_emulator(sim_config=sim_bench_config.sim) as b:
+    with (
+        bench_emulator(sim_config=sim_bench_config.sim) as a,
+        bench_emulator(sim_config=sim_bench_config.sim) as b,
+    ):
         assert a.scpi_port != b.scpi_port
         sg = LanSignalGenerator(a.host, a.scpi_port)
         dmm_b = LanMultimeter(b.host, b.scpi_port)

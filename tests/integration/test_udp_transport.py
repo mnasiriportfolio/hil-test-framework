@@ -4,6 +4,7 @@ UDP is where the interesting failures live: datagrams vanish, replies arrive
 late and out of order, and a device is allowed to refuse. The emulator can drop
 packets on demand so the retry path runs for real instead of being assumed.
 """
+
 from __future__ import annotations
 
 import math

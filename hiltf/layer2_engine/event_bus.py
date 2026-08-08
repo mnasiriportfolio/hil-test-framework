@@ -5,6 +5,7 @@ private results list and never call a reporter directly. This decoupling is what
 lets one run feed many outputs (console, markdown, a merged spreadsheet) without
 touching the test logic.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict

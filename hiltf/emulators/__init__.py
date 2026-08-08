@@ -13,6 +13,7 @@ Two ways to run it:
 * :func:`bench_emulator` — a context manager that binds ephemeral ports and
   tears everything down, used by the integration tests.
 """
+
 from __future__ import annotations
 
 import contextlib

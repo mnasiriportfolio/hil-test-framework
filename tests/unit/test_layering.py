@@ -16,6 +16,7 @@ The Python checks parse the **AST** rather than grepping the text. A regex over
 source cannot tell a real call from the same words inside a docstring, and a
 test that fails on its own explanation is a test people delete.
 """
+
 from __future__ import annotations
 
 import ast
@@ -128,8 +129,7 @@ def test_keywords_never_reach_into_the_simulation() -> None:
 
 def test_controller_exposes_no_simulation_object() -> None:
     """A socket-configured run must not have a simulation in the process."""
-    from hiltf.layer2_engine import InstrumentController
-    from hiltf.layer2_engine import load_config
+    from hiltf.layer2_engine import InstrumentController, load_config
 
     controller = InstrumentController(load_config(ROOT / "config" / "bench_socket.yaml"))
     assert not hasattr(controller, "bench"), (

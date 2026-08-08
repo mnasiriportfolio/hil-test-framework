@@ -31,6 +31,7 @@ is allowed to refuse — the request is out of range, the channel does not exist
 an interlock is engaged. The caller needs the reason code to decide whether to
 retry, skip or fail, so it is carried in the reply rather than flattened.
 """
+
 from __future__ import annotations
 
 import struct

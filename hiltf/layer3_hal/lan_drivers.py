@@ -10,6 +10,7 @@ each instrument in a real rack is its own listener.
 Run them against ``python -m hiltf.emulators`` (or the ``bench`` service in
 ``docker-compose.yml``) to exercise the full socket path with no hardware.
 """
+
 from __future__ import annotations
 
 from .base_driver import BaseDriver
@@ -63,8 +64,9 @@ class _LanDriver(BaseDriver):
 
 
 class LanSignalGenerator(_LanDriver):
-    def __init__(self, host: str, port: int = 5025, timeout_s: float = 10.0,
-                 name: str = "LAN-AFG") -> None:
+    def __init__(
+        self, host: str, port: int = 5025, timeout_s: float = 10.0, name: str = "LAN-AFG"
+    ) -> None:
         super().__init__(host, port, timeout_s, name)
 
     def configure_sine(
@@ -111,8 +113,9 @@ class LanSignalGenerator(_LanDriver):
 
 
 class LanMultimeter(_LanDriver):
-    def __init__(self, host: str, port: int = 5025, timeout_s: float = 10.0,
-                 name: str = "LAN-DMM") -> None:
+    def __init__(
+        self, host: str, port: int = 5025, timeout_s: float = 10.0, name: str = "LAN-DMM"
+    ) -> None:
         super().__init__(host, port, timeout_s, name)
 
     def measure_dc_voltage(self) -> float:
@@ -129,8 +132,9 @@ class LanMultimeter(_LanDriver):
 
 
 class LanOscilloscope(_LanDriver):
-    def __init__(self, host: str, port: int = 5025, timeout_s: float = 30.0,
-                 name: str = "LAN-OSC") -> None:
+    def __init__(
+        self, host: str, port: int = 5025, timeout_s: float = 30.0, name: str = "LAN-OSC"
+    ) -> None:
         # A gated capture plus a multi-megabyte block transfer takes longer than
         # a scalar query, so this driver gets a longer default timeout.
         super().__init__(host, port, timeout_s, name)

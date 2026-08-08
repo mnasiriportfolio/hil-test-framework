@@ -4,6 +4,7 @@ Pure functions over a Waveform — no bench, no config, no I/O. These are the
 calculations a report's numbers come from, so they get tested at the level
 where a mistake is visible.
 """
+
 from __future__ import annotations
 
 import math

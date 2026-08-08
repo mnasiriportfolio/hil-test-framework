@@ -7,6 +7,7 @@ the socket, PyVISA or UDP drivers that sit beside them in this package.
 This is the zero-dependency transport: no network, no PyVISA, no container.
 It is the default bench so that ``git clone && pytest`` works on any machine.
 """
+
 from __future__ import annotations
 
 from .base_driver import BaseDriver

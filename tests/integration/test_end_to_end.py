@@ -1,5 +1,6 @@
 """End-to-end: build the simulated bench from config, run every test type
 through the engine, and assert the reports come out green."""
+
 from pathlib import Path
 
 import pytest

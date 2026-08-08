@@ -16,6 +16,7 @@ means three things a TCP driver never has to think about:
 * **A refusal is not a timeout.** A NACK means the device heard and declined;
   retrying it just wastes the timeout budget. It is raised immediately.
 """
+
 from __future__ import annotations
 
 import socket
@@ -103,7 +104,7 @@ class BinaryUdpDut(BaseDriver):
                 sock.settimeout(remaining)
                 try:
                     data = sock.recv(self.RECV_SIZE)
-                except (TimeoutError, socket.timeout):
+                except TimeoutError:
                     break
                 try:
                     frame = proto.decode(data)
@@ -155,6 +156,5 @@ class BinaryUdpDut(BaseDriver):
         echoed = proto.decode_ack(frame.payload)
         if echoed != proto.REQ_SET_CORRECTION:
             raise proto.ProtocolError(
-                f"{self.name}: ACK echoed 0x{echoed:02X}, expected "
-                f"0x{proto.REQ_SET_CORRECTION:02X}"
+                f"{self.name}: ACK echoed 0x{echoed:02X}, expected 0x{proto.REQ_SET_CORRECTION:02X}"
             )

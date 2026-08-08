@@ -4,6 +4,7 @@ Thin adapter that exposes the Layer 2 engine as Robot keywords. The ``.robot``
 files call these by name; they contain no Python, no addresses, no channel
 numbers and no idea which transport is in use — only the test intent.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

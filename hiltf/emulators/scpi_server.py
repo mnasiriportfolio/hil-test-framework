@@ -22,6 +22,7 @@ Each TCP connection gets its own interpreter — matching a real rack, where eac
 instrument owns its acquisition state — while all of them share one bench, so
 what the generator drives is what the DMM and the scope see.
 """
+
 from __future__ import annotations
 
 import re
@@ -271,8 +272,10 @@ class ScpiServer(socketserver.ThreadingTCPServer):
 
     def start_background(self) -> threading.Thread:
         thread = threading.Thread(
-            target=self.serve_forever, args=(self.POLL_INTERVAL_S,),
-            name="scpi-server", daemon=True,
+            target=self.serve_forever,
+            args=(self.POLL_INTERVAL_S,),
+            name="scpi-server",
+            daemon=True,
         )
         thread.start()
         return thread

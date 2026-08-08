@@ -3,6 +3,7 @@
 This is where a typo either fails loudly at load time or silently changes what
 the bench does. These tests choose loudly.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,9 +27,7 @@ CONFIGS = ROOT / "config"
 
 
 # --- every shipped config actually loads -----------------------------------
-@pytest.mark.parametrize(
-    "name", ["bench_config.yaml", "bench_socket.yaml", "bench_visa.yaml"]
-)
+@pytest.mark.parametrize("name", ["bench_config.yaml", "bench_socket.yaml", "bench_visa.yaml"])
 def test_shipped_configs_load_and_name_registered_drivers(name):
     cfg = load_config(CONFIGS / name)
     assert cfg.name
@@ -42,8 +41,10 @@ def test_the_three_configs_differ_only_in_transport():
     Same roles, same device behaviour, different drivers. If these ever drift
     apart, "the transport is a config choice" has stopped being true.
     """
-    configs = [load_config(CONFIGS / n) for n in
-               ("bench_config.yaml", "bench_socket.yaml", "bench_visa.yaml")]
+    configs = [
+        load_config(CONFIGS / n)
+        for n in ("bench_config.yaml", "bench_socket.yaml", "bench_visa.yaml")
+    ]
     roles = [set(c.instruments) for c in configs]
     assert roles[0] == roles[1] == roles[2]
     assert configs[0].sim == configs[1].sim == configs[2].sim
@@ -59,18 +60,23 @@ def _write(tmp_path: Path, text: str) -> Path:
 
 
 def test_missing_role_is_rejected(tmp_path):
-    path = _write(tmp_path, """
+    path = _write(
+        tmp_path,
+        """
 bench: {name: partial}
 instruments:
   signal_generator: {driver: sim_signal_generator}
-""")
+""",
+    )
     with pytest.raises(ConfigError, match="multimeter"):
         load_config(path)
 
 
 def test_unknown_simulation_key_is_rejected(tmp_path):
     """A misspelled device parameter must not silently keep the default."""
-    path = _write(tmp_path, """
+    path = _write(
+        tmp_path,
+        """
 bench: {name: typo}
 instruments:
   signal_generator: {driver: sim_signal_generator}
@@ -79,7 +85,8 @@ instruments:
   dut: {driver: sim_dut}
 simulation:
   overcurent_trigger_a: 200.0
-""")
+""",
+    )
     with pytest.raises(ConfigError, match="overcurent_trigger_a"):
         load_config(path)
 

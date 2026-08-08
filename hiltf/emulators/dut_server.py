@@ -15,6 +15,7 @@ retries. Setting ``drop_first=2`` makes the emulator swallow the first two
 requests so that the retry path runs for real in a test, rather than being
 assumed to work because nothing ever went wrong.
 """
+
 from __future__ import annotations
 
 import socketserver
@@ -126,8 +127,10 @@ class DutServer(socketserver.ThreadingUDPServer):
 
     def start_background(self) -> threading.Thread:
         thread = threading.Thread(
-            target=self.serve_forever, args=(self.POLL_INTERVAL_S,),
-            name="dut-server", daemon=True,
+            target=self.serve_forever,
+            args=(self.POLL_INTERVAL_S,),
+            name="dut-server",
+            daemon=True,
         )
         thread.start()
         return thread

@@ -21,6 +21,7 @@ a small stimulus, measures what the bench actually produced, and derives the
 drive from that. (Wiring facts — which channel is the current input — stay in
 config; they describe how the bench is cabled, not what it measured.)
 """
+
 from __future__ import annotations
 
 import math
@@ -163,10 +164,18 @@ def vpp_for_current(amps_rms: float, volts_to_amps: float) -> float:
 
 
 # --- reporting helpers ----------------------------------------------------
-def _publish(bus: EventBus, suite: str, case: str, check: str,
-             expected: str, measured: str, outcome: str) -> None:
-    bus.publish(RESULT_TOPIC, suite=suite, case=case, check=check,
-                expected=expected, measured=measured, outcome=outcome)
+def _publish(
+    bus: EventBus, suite: str, case: str, check: str, expected: str, measured: str, outcome: str
+) -> None:
+    bus.publish(
+        RESULT_TOPIC,
+        suite=suite,
+        case=case,
+        check=check,
+        expected=expected,
+        measured=measured,
+        outcome=outcome,
+    )
 
 
 def _outcome(ok: bool, borderline: bool = False) -> str:
@@ -177,8 +186,15 @@ def _outcome(ok: bool, borderline: bool = False) -> str:
 
 def _publish_calibration(bus: EventBus, suite: str, case: str, ratio: float) -> str:
     """Record the measured ratio as evidence — it explains every later level."""
-    _publish(bus, suite, case, "Volts-to-amps ratio (measured)",
-             "> 0 A/Vrms", f"{ratio:.4f} A/Vrms", "PASS")
+    _publish(
+        bus,
+        suite,
+        case,
+        "Volts-to-amps ratio (measured)",
+        "> 0 A/Vrms",
+        f"{ratio:.4f} A/Vrms",
+        "PASS",
+    )
     return f"{ratio:.4f}"
 
 
@@ -200,8 +216,15 @@ def run_overcurrent_case(controller: InstrumentController, sc: Scenario, bus: Ev
     sg.output_off(ch)
     baseline = dmm.measure_ac_current_rms()
     idle = not dut.get_relay_states()["overcurrent"]
-    _publish(bus, suite, case, "Relay idle before stimulus",
-             "no trip", f"{baseline:.2f} A", _outcome(idle))
+    _publish(
+        bus,
+        suite,
+        case,
+        "Relay idle before stimulus",
+        "no trip",
+        f"{baseline:.2f} A",
+        _outcome(idle),
+    )
 
     # 2) drive just past the trigger and confirm the metered value
     sg.configure_sine(ch, vpp_for_current(sc.trigger * TRIGGER_OVERDRIVE, ratio), 50.0)
@@ -209,20 +232,39 @@ def run_overcurrent_case(controller: InstrumentController, sc: Scenario, bus: Ev
     measured = dmm.measure_ac_current_rms()
     lo, hi = tolerance_window(sc.trigger, sc.tolerance_pct)
     trig_ok = within_tolerance(measured, sc.trigger, sc.tolerance_pct)
-    _publish(bus, suite, case, "Trigger level",
-             f"{sc.trigger:g} A ({lo:.1f}-{hi:.1f})", f"{measured:.2f} A", _outcome(trig_ok))
+    _publish(
+        bus,
+        suite,
+        case,
+        "Trigger level",
+        f"{sc.trigger:g} A ({lo:.1f}-{hi:.1f})",
+        f"{measured:.2f} A",
+        _outcome(trig_ok),
+    )
 
     # 3) one acquisition, two measurements: detection latency and latch duration
     wf = osc.capture_relay("overcurrent", gate_ms=capture_gate_ms(sc))
     t_ms = rising_edge_ms(wf)
-    _publish(bus, suite, case, "Detection time (scope)",
-             f"<= {sc.detect_max_ms:g} ms", f"{t_ms:.1f} ms",
-             _outcome(timing_ok(t_ms, sc.detect_max_ms)))
+    _publish(
+        bus,
+        suite,
+        case,
+        "Detection time (scope)",
+        f"<= {sc.detect_max_ms:g} ms",
+        f"{t_ms:.1f} ms",
+        _outcome(timing_ok(t_ms, sc.detect_max_ms)),
+    )
 
     hold_s = pulse_width_ms(wf) / 1000.0
-    _publish(bus, suite, case, "Relay hold (scope)",
-             f">= {sc.hold_min_s:g} s", f"{hold_s:.2f} s",
-             _outcome(hold_ok(hold_s, sc.hold_min_s)))
+    _publish(
+        bus,
+        suite,
+        case,
+        "Relay hold (scope)",
+        f">= {sc.hold_min_s:g} s",
+        f"{hold_s:.2f} s",
+        _outcome(hold_ok(hold_s, sc.hold_min_s)),
+    )
 
     sg.output_off(ch)
 
@@ -248,19 +290,38 @@ def run_harmonic_case(controller: InstrumentController, sc: Scenario, bus: Event
     measured = dmm.measure_harmonic_current_rms()
     lo, hi = tolerance_window(sc.trigger, sc.tolerance_pct)
     trig_ok = within_tolerance(measured, sc.trigger, sc.tolerance_pct)
-    _publish(bus, suite, case, f"Harmonic trigger (order {order})",
-             f"{sc.trigger:g} A ({lo:.2f}-{hi:.2f})", f"{measured:.2f} A", _outcome(trig_ok))
+    _publish(
+        bus,
+        suite,
+        case,
+        f"Harmonic trigger (order {order})",
+        f"{sc.trigger:g} A ({lo:.2f}-{hi:.2f})",
+        f"{measured:.2f} A",
+        _outcome(trig_ok),
+    )
 
     wf = osc.capture_relay("harmonic", gate_ms=capture_gate_ms(sc))
     t_ms = rising_edge_ms(wf)
-    _publish(bus, suite, case, "Detection time (scope)",
-             f"<= {sc.detect_max_ms:g} ms", f"{t_ms:.1f} ms",
-             _outcome(timing_ok(t_ms, sc.detect_max_ms)))
+    _publish(
+        bus,
+        suite,
+        case,
+        "Detection time (scope)",
+        f"<= {sc.detect_max_ms:g} ms",
+        f"{t_ms:.1f} ms",
+        _outcome(timing_ok(t_ms, sc.detect_max_ms)),
+    )
 
     hold_s = pulse_width_ms(wf) / 1000.0
-    _publish(bus, suite, case, "Relay hold (scope)",
-             f">= {sc.hold_min_s:g} s", f"{hold_s:.2f} s",
-             _outcome(hold_ok(hold_s, sc.hold_min_s)))
+    _publish(
+        bus,
+        suite,
+        case,
+        "Relay hold (scope)",
+        f">= {sc.hold_min_s:g} s",
+        f"{hold_s:.2f} s",
+        _outcome(hold_ok(hold_s, sc.hold_min_s)),
+    )
 
     sg.output_off(i_ch)
     sg.output_off(v_ch)
@@ -286,8 +347,15 @@ def run_analog_output_case(controller: InstrumentController, sc: Scenario, bus: 
     ok = err_pct <= sc.tolerance_pct
     # out-of-tolerance here is expected and gets corrected below, so flag it as
     # CHECK (informational) rather than a hard FAIL.
-    _publish(bus, suite, case, f"CH{channel} output error (pre-cal)",
-             f"<= {sc.tolerance_pct:g} %", f"{err_pct:.2f} %", _outcome(ok, borderline=True))
+    _publish(
+        bus,
+        suite,
+        case,
+        f"CH{channel} output error (pre-cal)",
+        f"<= {sc.tolerance_pct:g} %",
+        f"{err_pct:.2f} %",
+        _outcome(ok, borderline=True),
+    )
 
     # if out of tolerance, self-calibrate a correction factor and re-verify
     if not ok:
@@ -295,9 +363,15 @@ def run_analog_output_case(controller: InstrumentController, sc: Scenario, bus: 
         dut.apply_analog_correction(correction)
         out2 = dut.read_analog_output(channel)
         err2 = abs(out2 - requested) / requested * 100.0
-        _publish(bus, suite, case, f"CH{channel} auto-calibration",
-                 "apply correction, error <= tol",
-                 f"factor {correction:.4f} -> {err2:.2f} %", _outcome(err2 <= sc.tolerance_pct))
+        _publish(
+            bus,
+            suite,
+            case,
+            f"CH{channel} auto-calibration",
+            "apply correction, error <= tol",
+            f"factor {correction:.4f} -> {err2:.2f} %",
+            _outcome(err2 <= sc.tolerance_pct),
+        )
         dut.apply_analog_correction(1.0)  # reset for the next scenario
 
     sg.output_off(i_ch)

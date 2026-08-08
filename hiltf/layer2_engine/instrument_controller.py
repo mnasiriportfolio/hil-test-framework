@@ -9,6 +9,7 @@ that from ``bench_config.yaml``. So this file contains no instrument names, no
 addresses and no ``if simulated:``; it works unchanged whether the bench is an
 in-process simulation, a rack on a LAN, a PyVISA resource or a container.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -42,9 +43,7 @@ class InstrumentController:
         # there is nothing here for a stray reference to read a "measurement"
         # from — the numbers can only have come down the wire.
         ctx = build_context(instruments, config.sim, config.root)
-        built: dict[str, Any] = {
-            role: build_driver(role, instruments[role], ctx) for role in ROLES
-        }
+        built: dict[str, Any] = {role: build_driver(role, instruments[role], ctx) for role in ROLES}
 
         self.signal_generator: SignalGenerator = built["signal_generator"]
         self.multimeter: Multimeter = built["multimeter"]

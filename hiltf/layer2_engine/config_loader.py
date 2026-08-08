@@ -9,6 +9,7 @@ Note what this module does **not** do: it never inspects which transport was
 chosen. It hands the ``instruments:`` block to the Layer 3 registry and takes
 back objects. That is why there is no ``if simulated:`` anywhere in Layer 2.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

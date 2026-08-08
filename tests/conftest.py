@@ -4,6 +4,7 @@ The integration tests here need no hardware and no container: they start the
 bench emulator in-process on OS-assigned ports, so ``pytest`` alone exercises
 the socket and UDP transports end to end.
 """
+
 from __future__ import annotations
 
 import copy

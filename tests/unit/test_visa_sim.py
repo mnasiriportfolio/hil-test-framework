@@ -12,6 +12,7 @@ static table and cannot know that 20 Vrms into the current channel should read
 ``tests/integration/test_visa_over_tcpip.py``, which drives the same drivers
 through pyvisa-py against a live server.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

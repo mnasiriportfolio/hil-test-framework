@@ -4,6 +4,7 @@ The recorder subscribes to the bus and is the *only* thing that accumulates
 results. Keywords stay stateless; swapping or adding an output format never
 touches test logic. Renders a clean Markdown report with per-step tables.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -77,9 +78,7 @@ class ReportRecorder:
             lines.append("| # | Check | Expected | Measured | Outcome |")
             lines.append("|---|-------|----------|----------|---------|")
             for i, s in enumerate(c.steps, 1):
-                lines.append(
-                    f"| {i} | {s.check} | {s.expected} | {s.measured} | {s.outcome} |"
-                )
+                lines.append(f"| {i} | {s.check} | {s.expected} | {s.measured} | {s.outcome} |")
             lines.append("")
         return "\n".join(lines)
 

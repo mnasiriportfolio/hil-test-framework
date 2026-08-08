@@ -5,6 +5,7 @@ behaviour, so Layer 2 can write ``with controller.signal_generator as sg:``
 without caring what sits underneath — an in-process simulation, a TCP socket,
 a PyVISA resource or a UDP datagram protocol.
 """
+
 from __future__ import annotations
 
 
