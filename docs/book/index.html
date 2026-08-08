@@ -35,16 +35,17 @@
   Think of the framework as a theatre. Layer 1 is the <em>script</em> (what happens),
   Layer 2 is the <em>director</em> (turns the script into actions), and Layer 3 is the
   <em>cast and props</em> (the actual instruments — or, here, stand-ins). The magic is
-  that the script and director never need to know whether the props are real.</p>
+  that the script and director never need to know whether the props are real.</div>
 
   <div class="box"><b>Scope note</b>
   These chapters teach the three layers and the in-process simulated bench — the
-  foundation everything else is built on. The transports added since (raw TCP/SCPI,
+  foundation everything else is built on. The other three transports (raw TCP/SCPI,
   PyVISA, and the DUT's binary UDP protocol), the bench emulators and the
   containerised bench are documented in
   <a href="../../ARCHITECTURE.md">ARCHITECTURE.md</a>, including the wire formats.
-  A couple of code excerpts here quote an earlier revision of a file; the ideas they
-  teach are unchanged, but read the source as the authority.</p>
+  Code excerpts are abridged for teaching — type hints trimmed, bodies elided with
+  <code>...</code>, explanatory comments added — but they track the real files. Where
+  you want the last word, the source is the authority.</div>
 
   <h2>How to read this book</h2>
   <p>Each chapter follows the same shape:</p>
@@ -66,7 +67,7 @@
   <div class="box why"><b>Why this exists</b>
   It mirrors — as a clean-room, fully-simulated project — the architecture I use for
   real hardware validation. No proprietary code or device details appear anywhere; every
-  example runs on the included simulation.</p>
+  example runs on the included simulation.</div>
 
   <div class="nav">
     <span></span>

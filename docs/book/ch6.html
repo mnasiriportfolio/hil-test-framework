@@ -48,11 +48,11 @@
   <div class="box analogy"><b>Analogy</b>
   A radio station. The keyword broadcasts on a frequency (<code>"test.result"</code>); anyone
   tuned in receives it. Add a second listener (a live dashboard, a spreadsheet writer) and
-  the broadcaster changes nothing.</p>
+  the broadcaster changes nothing.</div>
 
   <div class="box why"><b>Why <code>defaultdict(list)</code>?</b>
   The first time anyone subscribes to a topic, the list is created automatically — no
-  "if the key doesn't exist yet" bookkeeping. Small idiom, cleaner code.</p>
+  "if the key doesn't exist yet" bookkeeping. Small idiom, cleaner code.</div>
 
   <h2>The recorder listens and grades</h2>
   <p>From <code>report_recorder.py</code>. In its constructor it subscribes; from then on it
@@ -81,11 +81,11 @@ def outcome(self) -> str:
 
   <div class="box why"><b>Why three outcomes, not two?</b>
   <code>CHECK</code> means "measured, worth a human's eye, but not a failure" — for example an
-  expected pre-calibration error. Collapsing it into PASS or FAIL would hide real information.</p>
+  expected pre-calibration error. Collapsing it into PASS or FAIL would hide real information.</div>
 
   <div class="box break"><b>What breaks if keywords kept their own results list</b>
   You'd be back to tangled code: every new output format would mean editing every test. The
-  bus is what keeps the tests ignorant of reporting — and that ignorance is a feature.</p>
+  bus is what keeps the tests ignorant of reporting — and that ignorance is a feature.</div>
 
   <h3>Key concepts introduced</h3>
   <p class="pillrow"><span>publish/subscribe</span><span>decoupling</span><span>callbacks</span><span>roll-up grading</span></p>

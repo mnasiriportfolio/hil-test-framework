@@ -35,7 +35,7 @@
 
   <div class="box analogy"><b>Analogy</b>
   It's an automated exam for a device. We ask a question (drive a signal), watch the
-  answer (read instruments), and grade it against an answer key (the spec in a plan file).</p>
+  answer (read instruments), and grade it against an answer key (the spec in a plan file).</div>
 
   <h2>The three layers</h2>
   <p>The code is split into three layers, and the golden rule is that <b>knowledge only
@@ -58,12 +58,12 @@ Layer 3  hiltf/layer3_hal/      the Hardware Abstraction Layer + drivers</code><
   Because the reasons a test <em>changes</em> are different from the reasons the
   <em>hardware</em> changes. If test intent and wiring details live in the same file,
   every new bench is a rewrite. Separate them, and moving to a new bench touches one
-  config file — nothing else.</p>
+  config file — nothing else.</div>
 
   <div class="box break"><b>What breaks if you ignore this</b>
   Put an IP address in a Robot suite and you've welded that test to one bench. Read a
   raw voltage in the engine and Layer 2 suddenly "knows" about volts-to-amps calibration
-  that belongs in Layer 3. The seams are the whole point.</p>
+  that belongs in Layer 3. The seams are the whole point.</div>
 
   <h2>A measurement's journey</h2>
   <p>Follow one overcurrent test from top to bottom and back:</p>

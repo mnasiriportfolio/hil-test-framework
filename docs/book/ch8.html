@@ -44,7 +44,7 @@ Overcurrent Detection All Scenarios
 
   <div class="box why"><b>No Python, no addresses here.</b>
   Everything concrete lives below. This file could be reviewed by a test engineer who never
-  writes code — which is exactly who often owns the test plan.</p>
+  writes code — which is exactly who often owns the test plan.</div>
 
   <h2>The adapter bridges the two worlds</h2>
   <p><code>HiltfLibrary.py</code> exposes engine calls as Robot keywords:</p>
@@ -62,11 +62,11 @@ class HiltfLibrary:
 
   <div class="box analogy"><b>Analogy</b>
   The library is an interpreter at a meeting: the Robot file speaks "test language", the
-  engine speaks "Python", and the interpreter passes messages faithfully between them.</p>
+  engine speaks "Python", and the interpreter passes messages faithfully between them.</div>
 
   <div class="box break"><b>Why <code>HiltfLibrary.py</code> with the <code>.py</code>?</b>
   Robot resolves a bare name on the module path; giving the path (with extension) makes it
-  load relative to the suite file, so the suites run from anywhere without extra setup.</p>
+  load relative to the suite file, so the suites run from anywhere without extra setup.</div>
 
   <h2>The whole loop, one picture</h2>
 <pre><code class="python">Open Bench            -> load_config -> InstrumentController builds 4 sim drivers

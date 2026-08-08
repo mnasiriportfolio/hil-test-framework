@@ -49,7 +49,7 @@
   <div class="box why"><b>Why turn YAML into a <code>BenchConfig</code> dataclass?</b>
   Raw dictionaries invite typos (<code>cfg["trigger"]</code> vs <code>cfg["triger"]</code>).
   A dataclass gives named, typed fields the editor can check — the config becomes a real
-  object, not a bag of strings.</p>
+  object, not a bag of strings.</div>
 
   <h2>A plan is a table of scenarios</h2>
   <p><code>config/overcurrent_plan.csv</code>:</p>
@@ -65,11 +65,11 @@ seen.add(name)</code></pre>
 
   <div class="box analogy"><b>Analogy</b>
   The plan is a recipe card; <code>enabled</code> is a sticky note saying "make this one
-  tonight". To cook a different dish you swap cards, not the kitchen.</p>
+  tonight". To cook a different dish you swap cards, not the kitchen.</div>
 
   <div class="box break"><b>What breaks with duplicate names</b>
   Two rows called <code>slow_ac</code> would silently overwrite each other's results in the
-  report. The loader refuses them up front, so the mistake can't reach a run.</p>
+  report. The loader refuses them up front, so the mistake can't reach a run.</div>
 
   <h2>Pure math, separately testable</h2>
   <p>The spec comparisons are <em>pure functions</em> — no hardware, no state — so they can
@@ -83,7 +83,7 @@ def timing_ok(measured_ms: float, limit_ms: float) -> bool:
 
   <div class="box why"><b>Why keep these pure?</b>
   Pure functions are the easiest code to trust: give inputs, check outputs, done. See
-  <code>tests/unit/test_plan.py</code> — the whole spec logic is verified without a bench.</p>
+  <code>tests/unit/test_plan.py</code> — the whole spec logic is verified without a bench.</div>
 
   <h3>Key concepts introduced</h3>
   <p class="pillrow"><span>data-driven design</span><span>fail-fast validation</span><span>pure functions</span><span>dataclass over dict</span></p>

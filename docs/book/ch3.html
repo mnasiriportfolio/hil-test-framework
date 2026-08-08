@@ -50,7 +50,7 @@ class DeviceUnderTest(Instrument, Protocol):   # the DUT's own telemetry
 
   <div class="box why"><b>Why four, not one?</b>
   Each role is a different job. Splitting them means a test that only needs a multimeter
-  doesn't depend on oscilloscope methods — smaller contracts, fewer surprises.</p>
+  doesn't depend on oscilloscope methods — smaller contracts, fewer surprises.</div>
 
   <h2>A driver keeps a promise</h2>
   <p>From <code>sim_drivers.py</code>. Notice it <em>extends</em> <code>BaseDriver</code>
@@ -72,12 +72,12 @@ class DeviceUnderTest(Instrument, Protocol):   # the DUT's own telemetry
   <div class="box analogy"><b>Analogy</b>
   <code>BaseDriver</code> is the staff handbook every employee follows (clock in / clock out).
   The <code>SignalGenerator</code> protocol is the job description for the "signal" role.
-  A real employee (<code>SimSignalGenerator</code>) does both.</p>
+  A real employee (<code>SimSignalGenerator</code>) does both.</div>
 
   <div class="box break"><b>What breaks if a driver forgets a method</b>
   Because the protocol is <code>@runtime_checkable</code>, a missing method means the object
   no longer counts as a <code>SignalGenerator</code> — you find out immediately, not after
-  wiring it into a test.</p>
+  wiring it into a test.</div>
 
   <h2>The swap that proves the point</h2>
   <p>Every simulated driver shares one <code>SimulatedBench</code> (next chapter). To move to

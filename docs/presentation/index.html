@@ -76,13 +76,20 @@
       <div class="arrow">▼ keywords</div>
       <div class="layer"><b>Layer 2 — Engine</b><br><small>Plans, keyword algorithms, event bus, reporting. Speaks only to interfaces.</small></div>
       <div class="arrow">▼ Protocol interfaces</div>
-      <div class="layer"><b>Layer 3 — HAL</b><br><small>The only layer that knows the actual instrument (here: a simulation).</small></div>
+      <div class="layer"><b>Layer 3 — HAL</b><br><small>The only layer that knows how the instrument is reached. Four implementations ship.</small></div>
     </div>
   </section>
 
   <section class="slide">
     <h2>One suite, any transport</h2>
-    <p class="big">Layer 2 talks to <code>Protocol</code> interfaces, so a simulated driver and a real SCPI or NI-PXI driver are interchangeable. Moving to real hardware is a config change — not a code change.</p>
+    <p class="big">Layer 2 talks to <code>Protocol</code> interfaces, so the transport is a line in a YAML file — never a code change. Four are implemented and all four run in CI:</p>
+    <div class="row">
+      <div class="mini"><h3>Simulation</h3><small>in-process, zero dependencies</small></div>
+      <div class="mini"><h3>Raw TCP / SCPI</h3><small>buffered reader, IEEE 488.2 blocks</small></div>
+      <div class="mini"><h3>PyVISA</h3><small>pyvisa-sim, pyvisa-py, or NI-VISA</small></div>
+      <div class="mini"><h3>Binary UDP</h3><small>the DUT's own protocol, with retries</small></div>
+    </div>
+    <p class="big">A parity test asserts a socket run and an in-process run produce byte-identical reports.</p>
   </section>
 
   <section class="slide">
@@ -105,7 +112,7 @@ fast_dc,false,500,3,10,3</pre>
   <section class="slide">
     <h2>Oscilloscope-based timing</h2>
     <canvas id="scope" width="760" height="300"></canvas>
-    <p class="big">Detection latency is measured by finding the rising edge of the relay trace — the real technique, in code.</p>
+    <p class="big">One acquisition, two measurements: the rising edge is the detection latency, the width to the falling edge is the latch duration. The threshold is derived from the trace, so any relay voltage works unconfigured.</p>
   </section>
 
   <section class="slide">
@@ -123,10 +130,10 @@ apply correction 0.9709 →    0.00 %   <span class="pill PASS">PASS</span></pre
   <section class="slide">
     <h2>Verified green</h2>
     <div class="greens">
-      <span>ruff ✓</span><span>mypy ✓</span><span>pytest — 21 passed</span>
-      <span>Robot — 3 suites</span><span>example → PASS</span><span>CI: py 3.10–3.12</span>
+      <span>ruff ✓</span><span>mypy ✓</span><span>pytest — 153 passed</span>
+      <span>Robot — 3 suites</span><span>Docker bench ✓</span><span>CI: py 3.10–3.12</span>
     </div>
-    <p class="big" style="margin-top:24px">Python · Robot Framework · Protocol-based HAL · event bus · simulation mode.<br>
+    <p class="big" style="margin-top:24px">Python · Robot Framework · Protocol-based HAL · SCPI · PyVISA · binary UDP · Docker.<br>
     <a href="../demo/index.html">Try the interactive demo →</a></p>
   </section>
 

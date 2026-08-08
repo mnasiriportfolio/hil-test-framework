@@ -51,16 +51,16 @@
   <div class="box why"><b>Why <code>self</code>?</b>
   A class is a template; an <em>instance</em> is one object made from it. <code>self</code>
   is "this particular object", so <code>self._connected</code> is the connection flag for
-  <em>this</em> driver, separate from every other driver's flag.</p>
+  <em>this</em> driver, separate from every other driver's flag.</div>
 
   <div class="box analogy"><b>Analogy</b>
   The class is the blueprint for a walkie-talkie; each instance is a physical unit. They
-  share the design (methods) but each has its own on/off switch (its own <code>self</code> state).</p>
+  share the design (methods) but each has its own on/off switch (its own <code>self</code> state).</div>
 
   <div class="box break"><b>What breaks without <code>_require_connection</code></b>
   Call <code>measure()</code> before <code>connect()</code> on real hardware and you get a
   confusing socket error deep in a driver. This guard fails early with a clear message —
-  a small habit that saves hours.</p>
+  a small habit that saves hours.</div>
 
   <h2>The context manager — guaranteed cleanup</h2>
   <p>Same file, the two "dunder" methods that make <code>with</code> work:</p>
@@ -77,7 +77,7 @@
 
   <div class="box why"><b>Why bother?</b>
   Instruments must be released whether the test passes, fails, or throws. <code>__exit__</code>
-  runs no matter what, so you can never "leak" a locked instrument session.</p>
+  runs no matter what, so you can never "leak" a locked instrument session.</div>
 
   <h2>A Protocol — an interface without inheritance</h2>
   <p>From <code>hiltf/layer3_hal/interfaces.py</code>. A <code>Protocol</code> describes the
@@ -93,11 +93,11 @@ class SignalGenerator(Instrument, Protocol):
   <div class="box why"><b>This is the hinge of the whole design.</b>
   Layer 2 asks only for "something shaped like a <code>SignalGenerator</code>". A simulated
   generator and a real SCPI generator both have these methods, so both qualify — and Layer 2
-  can't tell them apart. That's how one test runs on simulation <em>and</em> hardware.</p>
+  can't tell them apart. That's how one test runs on simulation <em>and</em> hardware.</div>
 
   <div class="box analogy"><b>Analogy</b>
   A power socket is a protocol. Any appliance with the right plug works; the wall doesn't
-  care if it's a lamp or a laptop charger. The plug <em>shape</em> is the contract.</p>
+  care if it's a lamp or a laptop charger. The plug <em>shape</em> is the contract.</div>
 
   <h2>A dataclass — a labelled record, for free</h2>
   <p>From <code>interfaces.py</code>, the captured waveform:</p>
@@ -112,7 +112,7 @@ class Waveform:
   <div class="box why"><b>Why <code>@dataclass</code>?</b>
   The decorator writes the boilerplate <code>__init__</code> for you from the field list, so
   <code>Waveform(dt_s=1e-6, samples=[...])</code> just works. <code>default_factory=list</code>
-  gives each instance its <em>own</em> empty list — a classic Python trap avoided.</p>
+  gives each instance its <em>own</em> empty list — a classic Python trap avoided.</div>
 
   <h3>Key concepts introduced</h3>
   <p class="pillrow"><span>class / instance / self</span><span>__enter__ / __exit__</span><span>Protocol (structural typing)</span><span>@dataclass</span></p>

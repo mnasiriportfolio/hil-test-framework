@@ -32,38 +32,68 @@
   never a volt or an IP.</p>
 
   <h2>Finding an edge on the scope</h2>
-  <p>Detection timing comes from the first sample that crosses half of the 0→3.3&nbsp;V relay
-  swing:</p>
-<pre><code class="python">def rising_edge_ms(wf: Waveform, threshold_v: float = 1.65) -> float:
-    for i, v in enumerate(wf.samples):
-        if v &gt;= threshold_v:
-            return i * wf.dt_s * 1000.0
-    return float("inf")   # no crossing -> no edge</code></pre>
+  <p>The threshold is <em>derived from the trace</em>, half-way between its low and high level
+  — not hardcoded. A 3.3&nbsp;V logic relay, a 5&nbsp;V one and a 24&nbsp;V industrial one all
+  work with no reconfiguration:</p>
+<pre><code class="python">def auto_threshold_v(wf: Waveform) -> float | None:
+    if not wf.samples:
+        return None
+    lo, hi = min(wf.samples), max(wf.samples)
+    if hi - lo &lt; _MIN_EDGE_SWING_V:
+        return None
+    return (lo + hi) / 2.0</code></pre>
+
+  <p>A flat trace legitimately has no threshold — that is a relay that never moved, and
+  returning <code>None</code> says so instead of inventing an edge. From there,
+  <code>edges_ms</code> finds the rising edge and then, <em>starting from it</em>, the falling
+  one; <code>pulse_width_ms</code> is the difference.</p>
+
+  <div class="box break"><b>Why the fall is searched only after the rise</b>
+  A trace that starts high — a relay still latched from the previous scenario — would
+  otherwise read as a pulse that ended at t=0, reporting a hold of zero for a relay that was
+  never released.</div>
 
   <div class="box analogy"><b>Analogy</b>
-  It's a stopwatch that starts at capture and stops the instant the relay "lights up". Return
-  <code>inf</code> and the timing check reads "the light never came on".</p>
+  It's a stopwatch that starts at capture, splits when the relay "lights up", and stops when
+  it goes dark. Return <code>inf</code> and the timing check reads "the light never came on".</div>
 
   <h2>The overcurrent test, end to end</h2>
-<pre><code class="python">def run_overcurrent_case(controller, sc, bus) -> None:
-    sg, dmm, osc = controller.signal_generator, controller.multimeter, controller.oscilloscope
-    ch = controller.config.sim.current_channel
+<pre><code class="python">ratio = calibrate_volts_to_amps(controller)      # measured, never read from config
+_publish_calibration(bus, suite, case, ratio)
 
-    sg.configure_sine(ch, _vpp_for_current(controller, sc.trigger), 50.0)
-    sg.output_on(ch)
-    measured = dmm.measure_ac_current_rms()
-    trig_ok = within_tolerance(measured, sc.trigger, sc.tolerance_pct)
-    _publish(bus, suite, case, "Trigger level", ..., _outcome(trig_ok))
+sg.output_off(ch)                                 # not-driven baseline first
+baseline = dmm.measure_ac_current_rms()
+idle = not dut.get_relay_states()["overcurrent"]
+_publish(bus, suite, case, "Relay idle before stimulus", ..., _outcome(idle))
 
-    wf = osc.capture_relay("overcurrent", gate_ms=sc.detect_max_ms + 500.0)
-    t_ms = rising_edge_ms(wf)
-    _publish(bus, suite, case, "Detection time (scope)", ...,
-             _outcome(timing_ok(t_ms, sc.detect_max_ms)))</code></pre>
+sg.configure_sine(ch, vpp_for_current(sc.trigger * TRIGGER_OVERDRIVE, ratio), 50.0)
+sg.output_on(ch)
+measured = dmm.measure_ac_current_rms()
+_publish(bus, suite, case, "Trigger level", ...,
+         _outcome(within_tolerance(measured, sc.trigger, sc.tolerance_pct)))
+
+wf = osc.capture_relay("overcurrent", gate_ms=capture_gate_ms(sc))   # ONE capture
+t_ms = rising_edge_ms(wf)
+_publish(bus, suite, case, "Detection time (scope)", ...,
+         _outcome(timing_ok(t_ms, sc.detect_max_ms)))
+
+hold_s = pulse_width_ms(wf) / 1000.0                                 # TWO measurements
+_publish(bus, suite, case, "Relay hold (scope)", ...,
+         _outcome(hold_ok(hold_s, sc.hold_min_s)))</code></pre>
+
+  <div class="box why"><b>Two things worth stopping on.</b>
+  First, the ratio is <em>measured</em> at the top of every case. It would be easy to read it
+  from config — it is right there — but on a real bench it is a property of the probe and the
+  cabling on the day, and a stale one is invisible: every level is off by the same factor, so
+  the numbers still look plausible.<br><br>
+  Second, <code>TRIGGER_OVERDRIVE</code>. Commanding <em>exactly</em> the threshold is
+  undefined — generators have finite command resolution, detectors have hysteresis — so a test
+  that means "cross it" states its margin instead of hoping.</div>
 
   <div class="box why"><b>Notice what's absent.</b>
-  No volts-to-amps, no socket, no NI call. <code>_vpp_for_current</code> converts a target
-  current to generator volts using the bench calibration, but the keyword itself just asks a
-  <code>SignalGenerator</code> and an <code>Oscilloscope</code> to do their jobs.</p>
+  No volts-to-amps constant, no socket, no VISA call. The keyword asks a
+  <code>SignalGenerator</code>, a <code>Multimeter</code> and an <code>Oscilloscope</code> to
+  do their jobs, and never learns which of the four transports it is holding.</div>
 
   <h2>Self-calibration — the clever bit</h2>
   <p>The analog-output test measures error, and if it's too big it <em>fixes the device</em>
@@ -82,11 +112,11 @@ if not ok:
   <div class="box why"><b>The test verifies the device — not the other way round.</b>
   It measures reality, compares to the plan's spec, and flags mismatches as <code>CHECK</code>
   rather than bending a number to make it pass. That honesty is the difference between a test
-  that protects you and one that lies to you.</p>
+  that protects you and one that lies to you.</div>
 
   <div class="box break"><b>What breaks if you fudge a measurement to match spec</b>
   A real defect sails through. The whole value of an automated bench is that it tells you the
-  uncomfortable truth every time — so the code is written to preserve that truth.</p>
+  uncomfortable truth every time — so the code is written to preserve that truth.</div>
 
   <h3>Key concepts introduced</h3>
   <p class="pillrow"><span>algorithm as a function</span><span>enumerate</span><span>closure over the bus</span><span>measure-then-correct</span></p>

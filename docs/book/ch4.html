@@ -45,7 +45,7 @@
   <div class="box why"><b>Why closed-form instead of generating samples?</b>
   We only need the <em>answer</em> (the RMS, the trip point), not a giant array. Closed-form
   maths is exact and instant — perfect for deterministic tests. The oscilloscope <em>does</em>
-  build samples, but only because finding an edge needs a time axis.</p>
+  build samples, but only because finding an edge needs a time axis.</div>
 
   <h2>The DUT's decision</h2>
 <pre><code class="python">def current_rms_a(self) -> float:
@@ -58,25 +58,39 @@ def overcurrent_tripped(self) -> bool:
   <div class="box analogy"><b>Analogy</b>
   <code>SimulatedBench</code> is a flight simulator's physics engine. The yoke (signal
   generator) doesn't move a real plane; it updates shared state, and every instrument in
-  the cockpit reads that same state consistently.</p>
+  the cockpit reads that same state consistently.</div>
 
   <h2>The oscilloscope builds a trace</h2>
-  <p>From <code>sim_drivers.py</code> — the one place samples are actually generated, so an
-  edge exists to be found:</p>
+  <p>From <code>sim_drivers.py</code>. Notice how little the driver does — it is a courier:</p>
 <pre><code class="python">def capture_relay(self, relay: str, gate_ms: float) -> Waveform:
     self._require_connection()
-    dt = 1.0 / self.sample_rate_hz
-    n = int((gate_ms / 1000.0) / dt)
-    tripped = self.bench.relay_states().get(relay, False)
-    edge_ms = self.bench.detection_time_ms(relay) if tripped else float("inf")
-    edge_idx = int((edge_ms / 1000.0) / dt)
-    samples = [3.3 if i &gt;= edge_idx else 0.0 for i in range(n)]
+    dt, samples = self.bench.relay_trace(relay, gate_ms, self.sample_rate_hz)
     return Waveform(dt_s=dt, samples=samples)</code></pre>
 
+  <p>The samples themselves are rendered by the bench, in <code>simulation.py</code>. That
+  matters: the networked emulators hold the <em>same</em> <code>SimulatedBench</code> object,
+  so a trace fetched over a socket is sample-for-sample identical to this one.</p>
+<pre><code class="python">dt = 1.0 / sample_rate_hz
+n = max(1, int((gate_ms / 1000.0) / dt))
+if not self.relay_states().get(relay, False):
+    return dt, [0.0] * n
+rise = int((self.detection_time_ms(relay) / 1000.0) / dt)
+fall = rise + int(self.hold_time_s(relay) / dt)
+high = self.cfg.relay_high_v
+return dt, [high if rise &lt;= i &lt; fall else 0.0 for i in range(n)]</code></pre>
+
+  <div class="box why"><b>Why there is a falling edge.</b>
+  A relay doesn't latch forever — it holds, then releases. Rendering the release means one
+  acquisition answers two questions: the rising edge gives the detection latency, and the
+  width between the edges gives the hold duration. Asking the device how long it
+  <em>intends</em> to hold would only read back its own opinion.</div>
+
   <div class="box break"><b>What breaks if the relay never trips</b>
-  <code>edge_ms</code> becomes <code>inf</code>, <code>edge_idx</code> lands past the end,
-  and every sample is <code>0.0</code> — no edge. The timing keyword then reports "no edge",
-  which is exactly the right failure to see when a device doesn't respond.</p>
+  The early return hands back a flat trace of <code>0.0</code>. The keyword layer finds no
+  level to threshold against, reports <code>inf</code>, and the timing check fails — exactly
+  the right failure when a device doesn't respond. And note it is <code>inf</code>, not
+  <code>0.0</code>: <code>inf</code> fails a "&lt;= limit" check, whereas <code>0.0</code>
+  would sail through it.</div>
 
   <h2>Self-calibration lives here too</h2>
 <pre><code class="python">def analog_output_a(self, channel: int, requested_a: float) -> float:
