@@ -20,16 +20,23 @@
   .tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
   .tab{padding:9px 16px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--muted);cursor:pointer}
   .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
-  .grid{display:grid;grid-template-columns:340px 1fr;gap:20px}
+  .grid{display:grid;grid-template-columns:360px 1fr;gap:20px}
   @media(max-width:880px){.grid{grid-template-columns:1fr}}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
   .card h3{margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--teal)}
   label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
-  select,input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
+  select,input[type=number]{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .sub{font-size:11px;color:var(--muted);margin:2px 0 0}
+  .fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;margin-top:14px}
+  .fieldset > .legend{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--teal);font-weight:700}
+  .check{display:flex;align-items:flex-start;gap:9px;margin-top:10px}
+  .check input{margin-top:3px;width:16px;height:16px;accent-color:var(--teal)}
+  .check label{margin:0;color:var(--ink);font-size:13px}
   button.run{margin-top:16px;width:100%;padding:11px;border:0;border-radius:9px;background:var(--teal);color:#04231f;font-weight:700;cursor:pointer;font-size:15px}
   button.run:hover{filter:brightness(1.08)}
+  button.run:active{transform:translateY(1px)}
+  #ranAt{display:block;text-align:center;font-size:11px;color:var(--muted);margin-top:6px;min-height:14px}
   canvas{width:100%;height:280px;background:#0a1220;border:1px solid var(--line);border-radius:10px}
   table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
   th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
@@ -40,6 +47,9 @@
   .FAIL{background:rgba(255,92,115,.15);color:var(--fail)}
   .verdict{font-size:18px;font-weight:800;margin:6px 0 0}
   .note{color:var(--muted);font-size:13px;margin-top:10px}
+  .why{margin-top:10px;padding:10px 12px;border-left:3px solid var(--check);background:rgba(244,183,64,.07);
+       border-radius:0 8px 8px 0;font-size:13px;color:var(--ink)}
+  .why.ok{border-left-color:var(--pass);background:rgba(55,214,122,.06)}
   pre{background:#0a1220;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font:13px/1.5 "SFMono-Regular",Consolas,monospace;color:#cfe3ff}
   textarea{width:100%;height:300px;background:#0a1220;color:#cfe3ff;border:1px solid var(--line);border-radius:10px;padding:12px;font:13px/1.5 Consolas,monospace}
   .hidden{display:none}
@@ -49,7 +59,7 @@
 <body>
 <header>
   <h1>HIL Test Framework — Interactive Demo <span class="badge">simulated bench, no hardware</span></h1>
-  <p>Change the plan (spec) or the device (simulated reality) and watch the test run: oscilloscope timing, tolerance checks, self-calibration. <a href="../index.html">← project hub</a></p>
+  <p>Change the plan (the spec) or the device (simulated reality) and watch the test run: live calibration, oscilloscope timing, tolerance checks, self-calibration. <a href="../index.html">← project hub</a></p>
 </header>
 
 <div class="wrap">
@@ -70,8 +80,27 @@
           <option value="analog">Analog-output correctness</option>
         </select>
 
-        <label>Calibration — amps per Vrms (bench)</label>
-        <input id="v2a" type="number" value="10" step="0.5" />
+        <div class="fieldset">
+          <span class="legend">Current path calibration</span>
+          <div class="two">
+            <div>
+              <label>Bench: actual A per Vrms</label>
+              <input id="v2aReal" type="number" value="10" step="0.5" />
+              <p class="sub">the truth</p>
+            </div>
+            <div>
+              <label>Config: assumed A per Vrms</label>
+              <input id="v2aAssumed" type="number" value="10" step="0.5" />
+              <p class="sub">what the YAML says</p>
+            </div>
+          </div>
+          <div class="check">
+            <input id="autocal" type="checkbox" checked />
+            <label for="autocal">Measure the ratio before the test<br>
+              <span class="sub">the framework's standing rule — uncheck it and it trusts the config instead</span>
+            </label>
+          </div>
+        </div>
 
         <div class="two">
           <div>
@@ -112,17 +141,21 @@
         <div id="analogBox" class="hidden">
           <label>Device: analog gain error (%)</label>
           <input id="gainErr" type="number" value="3" step="0.5" />
-          <p class="sub">the self-cal discovers & corrects this</p>
+          <p class="sub">the self-cal discovers &amp; corrects this</p>
         </div>
 
         <button class="run" id="runJs">Run test</button>
-        <p class="note">Tip: make the device's real detect time exceed the plan's max, or set gain error above tolerance, to see a CHECK/FAIL.</p>
+        <span id="ranAt"></span>
+        <p class="note">Try it: set <b>bench actual</b> to 12 while <b>config assumed</b> stays 10.
+          With the ratio measured, it still passes. Uncheck the box and the drive level is computed
+          from a stale number — every reading is off by the same factor, and the test fails.</p>
       </div>
 
       <div class="card">
         <h3>Oscilloscope + report</h3>
         <canvas id="scope" width="760" height="280"></canvas>
         <div id="verdict" class="verdict"></div>
+        <div id="why" class="why hidden"></div>
         <table id="report"><thead><tr><th>#</th><th>Check</th><th>Expected</th><th>Measured</th><th>Outcome</th></tr></thead><tbody></tbody></table>
       </div>
     </div>
@@ -133,8 +166,8 @@
     <div class="grid">
       <div class="card">
         <h3>The real engine, in your browser</h3>
-        <p class="note">This tab boots <a href="https://pyodide.org" target="_blank" rel="noopener">Pyodide</a> (CPython compiled to WebAssembly) and runs the framework's actual simulation + keyword logic — the same Python that runs in CI. First run downloads the runtime (~a few MB), so give it a moment.</p>
-        <button class="run" id="runPy">Boot Python & run</button>
+        <p class="note">This tab boots <a href="https://pyodide.org" target="_blank" rel="noopener">Pyodide</a> (CPython compiled to WebAssembly) and runs the framework's actual simulation + keyword logic — live calibration, the trigger overdrive, and the hold measured as a pulse width off one capture, exactly as in <code>hiltf/layer2_engine/keywords.py</code>. First run downloads the runtime (~a few MB), so give it a moment.</p>
+        <button class="run" id="runPy">Boot Python &amp; run</button>
         <p id="pyStatus" class="note"></p>
       </div>
       <div class="card">
@@ -148,17 +181,26 @@
 </div>
 
 <!-- The real engine core, embedded so the Pyodide tab runs actual Python.
-     Mirrors hiltf/layer3_hal/simulation.py + hiltf/layer2_engine/keywords.py. -->
+     Mirrors hiltf/layer3_hal/simulation.py + hiltf/layer2_engine/keywords.py,
+     including calibrate_volts_to_amps, TRIGGER_OVERDRIVE and the scope-measured
+     hold (one capture, two measurements). -->
 <script id="engine-py" type="text/x-python">
 import math
 
 SQRT2 = math.sqrt(2.0)
 
+# keywords.TRIGGER_OVERDRIVE -- commanding *exactly* the threshold is undefined:
+# the generator has finite command resolution and the detector has hysteresis,
+# so a test that means "cross it" states its margin.
+TRIGGER_OVERDRIVE = 1.01
+CALIBRATION_PROBE_VPP = 1.0
+
+
 class SimConfig:
     def __init__(self, volts_to_amps=10.0, overcurrent_trigger_a=200.0,
                  overcurrent_detect_ms=1200.0, overcurrent_hold_s=3.08,
                  harmonic_trigger_a=1.5, harmonic_detect_ms=1130.0, harmonic_hold_s=3.20,
-                 analog_output_gain_error=0.03):
+                 analog_output_gain_error=0.03, relay_high_v=3.3):
         self.volts_to_amps = volts_to_amps
         self.overcurrent_trigger_a = overcurrent_trigger_a
         self.overcurrent_detect_ms = overcurrent_detect_ms
@@ -167,69 +209,153 @@ class SimConfig:
         self.harmonic_detect_ms = harmonic_detect_ms
         self.harmonic_hold_s = harmonic_hold_s
         self.analog_output_gain_error = analog_output_gain_error
+        self.relay_high_v = relay_high_v
 
-def rms_of_sine(vpp):        return vpp / (2.0 * SQRT2)
-def vpp_for_current(a, v2a): return (a / v2a) * 2.0 * SQRT2
+
+def quantize_vpp(vpp):
+    """SCPI carries the level as text with finite resolution."""
+    return float("%.6f" % vpp)
+
+
+def calibrate_volts_to_amps(cfg):
+    """Drive a small known probe, read the meter, divide.
+
+    The framework never reads this ratio out of config: on a real bench it is a
+    property of the probe and the cabling on the day, and a stale one silently
+    invalidates a whole campaign because every level is off by the same factor.
+    """
+    vrms = CALIBRATION_PROBE_VPP / (2.0 * SQRT2)
+    amps = vrms * cfg.volts_to_amps
+    if amps <= 0:
+        raise RuntimeError("calibration probe produced no current")
+    return amps / vrms
+
+
+def vpp_for_current(amps, ratio):
+    return (amps / ratio) * 2.0 * SQRT2
+
 
 def tolerance_window(trigger, tol_pct):
     d = trigger * tol_pct / 100.0
     return trigger - d, trigger + d
 
+
 def within_tol(m, trigger, tol_pct):
-    lo, hi = tolerance_window(trigger, tol_pct); return lo <= m <= hi
-
-def rising_edge_ms(samples, dt_s, threshold=1.65):
-    for i, v in enumerate(samples):
-        if v >= threshold:
-            return i * dt_s * 1000.0
-    return float("inf")
-
-def scope_capture(edge_ms, gate_ms, sample_rate=100000.0):
-    dt = 1.0 / sample_rate
-    n = int((gate_ms / 1000.0) / dt)
-    ei = int((edge_ms / 1000.0) / dt) if edge_ms != float("inf") else n + 1
-    return dt, [3.3 if i >= ei else 0.0 for i in range(n)]
-
-def run_overcurrent(cfg, trigger, tol_pct, detect_max_ms, hold_min_s):
-    steps = []
-    measured = trigger                              # generator driven to the trigger
     lo, hi = tolerance_window(trigger, tol_pct)
-    steps.append(("Trigger level", f"{trigger:g} A ({lo:.1f}-{hi:.1f})",
-                  f"{measured:.2f} A", "PASS" if within_tol(measured, trigger, tol_pct) else "FAIL"))
-    dt, wf = scope_capture(cfg.overcurrent_detect_ms, detect_max_ms + 500)
-    t = rising_edge_ms(wf, dt)
-    steps.append(("Detection time (scope)", f"<= {detect_max_ms:g} ms",
-                  f"{t:.1f} ms", "PASS" if 0 < t <= detect_max_ms else "FAIL"))
-    steps.append(("Relay hold", f">= {hold_min_s:g} s",
-                  f"{cfg.overcurrent_hold_s:.2f} s",
-                  "PASS" if cfg.overcurrent_hold_s >= hold_min_s else "FAIL"))
+    return lo <= m <= hi
+
+
+def relay_trace(cfg, detect_ms, hold_s, gate_ms, sample_rate=50000.0):
+    """0 V, then high at the trip, then low again -- one capture, two answers."""
+    dt = 1.0 / sample_rate
+    n = max(1, int((gate_ms / 1000.0) / dt))
+    rise = int((detect_ms / 1000.0) / dt)
+    fall = rise + int(hold_s / dt)
+    return dt, [cfg.relay_high_v if rise <= i < fall else 0.0 for i in range(n)]
+
+
+def edges_ms(samples, dt_s):
+    """(rising, falling); threshold derived from the trace, not hardcoded."""
+    lo, hi = min(samples), max(samples)
+    if hi - lo < 0.5:
+        return float("inf"), float("inf")
+    threshold = (lo + hi) / 2.0
+    rise = next((i for i, v in enumerate(samples) if v >= threshold), None)
+    if rise is None:
+        return float("inf"), float("inf")
+    fall = next((i for i in range(rise, len(samples)) if samples[i] < threshold), None)
+    to_ms = dt_s * 1000.0
+    return rise * to_ms, (float("inf") if fall is None else fall * to_ms)
+
+
+def pulse_width_ms(samples, dt_s):
+    rise, fall = edges_ms(samples, dt_s)
+    if rise == float("inf"):
+        return 0.0
+    if fall == float("inf"):
+        return len(samples) * dt_s * 1000.0 - rise
+    return fall - rise
+
+
+def _timed_case(cfg, title, trigger, tol_pct, detect_max_ms, hold_min_s,
+                detect_ms, hold_s, autocal=True, assumed_ratio=None):
+    steps = []
+    ratio = calibrate_volts_to_amps(cfg) if autocal else assumed_ratio
+    steps.append(("Volts-to-amps ratio",
+                  "measured live" if autocal else "from config (not measured)",
+                  "%.4f A/Vrms" % ratio, "PASS" if autocal else "CHECK"))
+
+    vpp = quantize_vpp(vpp_for_current(trigger * TRIGGER_OVERDRIVE, ratio))
+    measured = (vpp / (2.0 * SQRT2)) * cfg.volts_to_amps
+    lo, hi = tolerance_window(trigger, tol_pct)
+    steps.append(("Trigger level", "%g A (%.3f-%.3f)" % (trigger, lo, hi),
+                  "%.3f A" % measured, "PASS" if within_tol(measured, trigger, tol_pct) else "FAIL"))
+
+    gate = detect_max_ms + hold_min_s * 1000.0 + 500.0
+    dt, wf = relay_trace(cfg, detect_ms, hold_s, gate)
+    t, _ = edges_ms(wf, dt)
+    steps.append(("Detection time (scope)", "<= %g ms" % detect_max_ms,
+                  "%.1f ms" % t if t != float("inf") else "no edge",
+                  "PASS" if 0 < t <= detect_max_ms else "FAIL"))
+
+    held = pulse_width_ms(wf, dt) / 1000.0
+    steps.append(("Relay hold (scope)", ">= %g s" % hold_min_s, "%.2f s" % held,
+                  "PASS" if held >= hold_min_s else "FAIL"))
     return steps
 
-def run_analog(cfg, requested, tol_pct):
+
+def run_overcurrent(cfg, trigger, tol_pct, detect_max_ms, hold_min_s,
+                    autocal=True, assumed_ratio=None):
+    return _timed_case(cfg, "overcurrent", trigger, tol_pct, detect_max_ms, hold_min_s,
+                       cfg.overcurrent_detect_ms, cfg.overcurrent_hold_s,
+                       autocal, assumed_ratio)
+
+
+def run_harmonic(cfg, trigger, tol_pct, detect_max_ms, hold_min_s,
+                 autocal=True, assumed_ratio=None):
+    return _timed_case(cfg, "harmonic", trigger, tol_pct, detect_max_ms, hold_min_s,
+                       cfg.harmonic_detect_ms, cfg.harmonic_hold_s,
+                       autocal, assumed_ratio)
+
+
+def run_analog(cfg, requested, tol_pct, autocal=True, assumed_ratio=None):
     steps = []
-    out = requested * (1.0 + cfg.analog_output_gain_error)
-    err = abs(out - requested) / requested * 100.0
+    ratio = calibrate_volts_to_amps(cfg) if autocal else assumed_ratio
+    steps.append(("Volts-to-amps ratio",
+                  "measured live" if autocal else "from config (not measured)",
+                  "%.4f A/Vrms" % ratio, "PASS" if autocal else "CHECK"))
+
+    vpp = quantize_vpp(vpp_for_current(requested, ratio))
+    driven = (vpp / (2.0 * SQRT2)) * cfg.volts_to_amps
+    lo, hi = tolerance_window(requested, tol_pct)
+    steps.append(("Input current driven", "%g A (%.3f-%.3f)" % (requested, lo, hi),
+                  "%.3f A" % driven, "PASS" if within_tol(driven, requested, tol_pct) else "FAIL"))
+
+    out = driven * (1.0 + cfg.analog_output_gain_error)
+    err = abs(out - driven) / driven * 100.0
     ok = err <= tol_pct
-    steps.append(("CH1 output error (pre-cal)", f"<= {tol_pct:g} %",
-                  f"{err:.2f} %", "PASS" if ok else "CHECK"))
+    steps.append(("CH1 output error (pre-cal)", "<= %g %%" % tol_pct,
+                  "%.2f %%" % err, "PASS" if ok else "CHECK"))
     if not ok:
-        corr = requested / out
-        out2 = out * corr
-        err2 = abs(out2 - requested) / requested * 100.0
+        corr = driven / out
+        err2 = abs(out * corr - driven) / driven * 100.0
         steps.append(("CH1 auto-calibration", "apply correction, error <= tol",
-                      f"factor {corr:.4f} -> {err2:.2f} %", "PASS" if err2 <= tol_pct else "FAIL"))
+                      "factor %.4f -> %.2f %%" % (corr, err2),
+                      "PASS" if err2 <= tol_pct else "FAIL"))
     return steps
+
 
 def verdict(steps):
     outs = {s[3] for s in steps}
     return "FAIL" if "FAIL" in outs else ("CHECK" if "CHECK" in outs else "PASS")
 
+
 def show(title, steps):
     print(title)
     print("-" * len(title))
     for i, (c, e, m, o) in enumerate(steps, 1):
-        print(f"{i}. {c:32s} expected {e:22s} measured {m:22s} -> {o}")
-    print(f"=> {verdict(steps)}\n")
+        print("%d. %-28s expected %-32s measured %-18s -> %s" % (i, c, e, m, o))
+    print("=> %s\n" % verdict(steps))
 </script>
 
 <script>
@@ -242,39 +368,106 @@ def show(title, steps):
     document.getElementById('tab-py').classList.toggle('hidden', t.dataset.tab !== 'py');
   }));
 
-  // ---------- JS simulator (mirror of the Python math) ----------
+  // ---------- JS simulator (mirror of the Python math above) ----------
   const SQRT2 = Math.SQRT2;
+  const TRIGGER_OVERDRIVE = 1.01;
   const $ = id => document.getElementById(id);
   const val = id => parseFloat($(id).value);
 
+  // Adaptive precision. A fixed 1 decimal renders a 1.5 A window as "1.5-1.5",
+  // which looks broken and hides the whole point of the tolerance check.
+  function fmt(x){
+    if(!isFinite(x)) return '∞';
+    const a = Math.abs(x);
+    const d = a >= 100 ? 1 : a >= 10 ? 2 : a >= 1 ? 3 : 4;
+    return x.toFixed(d);
+  }
+  // SCPI carries the level as text with finite resolution.
+  const quantizeVpp = vpp => Number(vpp.toFixed(6));
+  const vppForCurrent = (amps, ratio) => (amps / ratio) * 2 * SQRT2;
   function toleranceWindow(t, tol){ const d = t*tol/100; return [t-d, t+d]; }
-  function scopeEdge(edgeMs, gateMs){ return edgeMs <= gateMs ? edgeMs : Infinity; }
 
   function compute(){
     const test = $('test').value;
     const tol = val('tol'), trigger = val('trigger');
+    const ratioReal = val('v2aReal'), ratioAssumed = val('v2aAssumed');
+    const autocal = $('autocal').checked;
+    const ratioUsed = autocal ? ratioReal : ratioAssumed;
+
+    const steps = [];
+    let why = null;
+
+    if(!isFinite(ratioUsed) || ratioUsed <= 0){
+      steps.push(['Volts-to-amps ratio', '> 0 A/Vrms', `${fmt(ratioUsed)} A/Vrms`, 'FAIL']);
+      return {steps, edge:Infinity, fall:Infinity, gate:2000,
+              why:'A non-physical calibration ratio stops the run — better than computing a drive level from it.'};
+    }
+
+    steps.push(['Volts-to-amps ratio',
+                autocal ? 'measured live' : 'from config (not measured)',
+                `${fmt(ratioUsed)} A/Vrms`,
+                autocal ? 'PASS' : 'CHECK']);
+
+    if(!autocal && Math.abs(ratioReal - ratioAssumed) > 1e-9){
+      why = `The config says ${fmt(ratioAssumed)} A/Vrms but the bench is actually ${fmt(ratioReal)}. ` +
+            `The drive level was computed from the stale number, so every reading is off by the same ` +
+            `factor — which is exactly why the framework measures the ratio before every case instead ` +
+            `of trusting the file.`;
+    }
+
     if(test === 'analog'){
+      const vpp = quantizeVpp(vppForCurrent(trigger, ratioUsed));
+      const driven = (vpp / (2*SQRT2)) * ratioReal;
+      const [lo,hi] = toleranceWindow(trigger, tol);
+      steps.push(['Input current driven', `${fmt(trigger)}A (${fmt(lo)}-${fmt(hi)})`,
+                  `${fmt(driven)}A`, (driven>=lo && driven<=hi) ? 'PASS' : 'FAIL']);
+
       const err = val('gainErr');
       const ok = err <= tol;
-      const steps = [['CH1 output error (pre-cal)', `<= ${tol}%`, `${err.toFixed(2)}%`, ok?'PASS':'CHECK']];
-      let edge = Infinity;
+      steps.push(['CH1 output error (pre-cal)', `<= ${fmt(tol)}%`, `${err.toFixed(2)}%`, ok?'PASS':'CHECK']);
       if(!ok){
         const corr = 1/(1+err/100);
         const err2 = Math.abs((1+err/100)*corr - 1)*100;
-        steps.push(['CH1 auto-calibration', 'error <= tol', `factor ${corr.toFixed(4)} → ${err2.toFixed(2)}%`, err2<=tol?'PASS':'FAIL']);
+        steps.push(['CH1 auto-calibration', 'error <= tol',
+                    `factor ${corr.toFixed(4)} → ${err2.toFixed(2)}%`, err2<=tol?'PASS':'FAIL']);
+        if(!why) why = `The device reproduces its input with a ${err}% gain error. That is out of ` +
+                       `tolerance, so it is reported as CHECK — not silently passed, not hard-failed — ` +
+                       `and the self-cal then computes a correction and re-verifies.`;
       }
-      return {steps, edge, gate:2000, current:trigger};
+      return {steps, edge:Infinity, fall:Infinity, gate:2000, why};
     }
+
+    // ----- timed tests: one capture, two measurements -----
     const detectMax = val('detectMax'), holdMin = val('holdMin');
     const detectReal = val('detectReal'), holdReal = val('holdReal');
+
+    const vpp = quantizeVpp(vppForCurrent(trigger * TRIGGER_OVERDRIVE, ratioUsed));
+    const measured = (vpp / (2*SQRT2)) * ratioReal;
     const [lo,hi] = toleranceWindow(trigger, tol);
-    const t = scopeEdge(detectReal, detectMax + 500);
-    const steps = [
-      ['Trigger level', `${trigger}A (${lo.toFixed(1)}-${hi.toFixed(1)})`, `${trigger.toFixed(2)}A`, 'PASS'],
-      ['Detection time (scope)', `<= ${detectMax}ms`, isFinite(t)?`${t.toFixed(1)}ms`:'no edge', (isFinite(t)&&t<=detectMax)?'PASS':'FAIL'],
-      ['Relay hold', `>= ${holdMin}s`, `${holdReal.toFixed(2)}s`, holdReal>=holdMin?'PASS':'FAIL'],
-    ];
-    return {steps, edge:t, gate:detectMax, current:trigger};
+    steps.push(['Trigger level', `${fmt(trigger)}A (${fmt(lo)}-${fmt(hi)})`,
+                `${fmt(measured)}A`, (measured>=lo && measured<=hi) ? 'PASS' : 'FAIL']);
+
+    const gate = detectMax + holdMin*1000 + 500;      // capture_gate_ms()
+    const rise = detectReal <= gate ? detectReal : Infinity;
+    const fallAbs = rise + holdReal*1000;
+    const heldMs = isFinite(rise) ? Math.min(fallAbs, gate) - rise : 0;
+
+    steps.push(['Detection time (scope)', `<= ${fmt(detectMax)}ms`,
+                isFinite(rise)?`${rise.toFixed(1)}ms`:'no edge',
+                (isFinite(rise) && rise>0 && rise<=detectMax)?'PASS':'FAIL']);
+    steps.push(['Relay hold (scope)', `>= ${fmt(holdMin)}s`, `${(heldMs/1000).toFixed(2)}s`,
+                (heldMs/1000)>=holdMin?'PASS':'FAIL']);
+
+    if(!why && isFinite(rise) && rise > detectMax)
+      why = `The relay tripped at ${rise.toFixed(0)} ms but the spec allows ${detectMax} ms. ` +
+            `The edge is still on the trace — the capture window is deliberately wider than the ` +
+            `limit so a late trip is measured rather than simply missed.`;
+    if(!why && (heldMs/1000) < holdMin)
+      why = `The relay released after ${(heldMs/1000).toFixed(2)} s, short of the ${holdMin} s the ` +
+            `spec requires. Note this is measured as the width between the rising and falling edges ` +
+            `of one capture — not read back from the device's own claim.`;
+
+    return {steps, edge:rise, fall:fallAbs, gate, why};
   }
 
   function verdict(steps){
@@ -282,35 +475,54 @@ def show(title, steps):
     return o.has('FAIL')?'FAIL':(o.has('CHECK')?'CHECK':'PASS');
   }
 
-  function drawScope(edgeMs, gateMs){
+  function drawScope(edgeMs, fallMs, gateMs, detectMax){
     const cv = $('scope'), ctx = cv.getContext('2d');
     const W = cv.width, H = cv.height;
     ctx.clearRect(0,0,W,H);
-    // grid
     ctx.strokeStyle = '#1a2b45'; ctx.lineWidth = 1;
     for(let i=0;i<=10;i++){ const x=i/10*W; ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
     for(let i=0;i<=6;i++){ const y=i/6*H; ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
-    const span = gateMs + 500;
-    const xOf = ms => (ms/span)*W;
-    // relay step
+
+    const span = gateMs;
+    const xOf = ms => Math.max(0, Math.min(W, (ms/span)*W));
+    const yLow = H*0.8, yHigh = H*0.25;
+
+    // the relay line: low -> high at the trip -> low again when it releases
     ctx.strokeStyle = '#2ec7c0'; ctx.lineWidth = 3;
     ctx.beginPath();
-    const yLow = H*0.8, yHigh = H*0.25;
     ctx.moveTo(0,yLow);
     if(isFinite(edgeMs) && edgeMs<=span){
-      ctx.lineTo(xOf(edgeMs),yLow); ctx.lineTo(xOf(edgeMs),yHigh); ctx.lineTo(W,yHigh);
+      ctx.lineTo(xOf(edgeMs),yLow); ctx.lineTo(xOf(edgeMs),yHigh);
+      const end = Math.min(fallMs, span);
+      ctx.lineTo(xOf(end),yHigh);
+      if(fallMs <= span){ ctx.lineTo(xOf(fallMs),yLow); ctx.lineTo(W,yLow); }
     } else { ctx.lineTo(W,yLow); }
     ctx.stroke();
-    // gate marker
-    ctx.strokeStyle = '#ff5c73'; ctx.setLineDash([6,5]); ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(xOf(gateMs),0); ctx.lineTo(xOf(gateMs),H); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle='#ff9db0'; ctx.font='12px monospace'; ctx.fillText(`gate ${gateMs}ms`, xOf(gateMs)+4, 16);
-    // edge cursor
+
+    // the spec's detection limit
+    if(detectMax <= span){
+      ctx.strokeStyle = '#ff5c73'; ctx.setLineDash([6,5]); ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(xOf(detectMax),0); ctx.lineTo(xOf(detectMax),H); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#ff9db0'; ctx.font='12px monospace';
+      ctx.fillText(`detect limit ${detectMax}ms`, xOf(detectMax)+4, 16);
+    }
+
     if(isFinite(edgeMs) && edgeMs<=span){
       ctx.strokeStyle='#f4b740'; ctx.setLineDash([4,4]);
       ctx.beginPath(); ctx.moveTo(xOf(edgeMs),0); ctx.lineTo(xOf(edgeMs),H); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle='#f4b740'; ctx.fillText(`t = ${edgeMs.toFixed(0)}ms`, xOf(edgeMs)+4, H-8);
+      ctx.fillStyle='#f4b740'; ctx.font='12px monospace';
+      ctx.fillText(`t = ${edgeMs.toFixed(0)}ms`, xOf(edgeMs)+4, H-8);
+
+      // the hold, drawn as what it actually is: the width of the pulse
+      const end = Math.min(fallMs, span);
+      const yH = yHigh - 14;
+      ctx.strokeStyle='#9fb0c8'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(xOf(edgeMs),yH); ctx.lineTo(xOf(end),yH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(xOf(edgeMs),yH-4); ctx.lineTo(xOf(edgeMs),yH+4);
+      ctx.moveTo(xOf(end),yH-4); ctx.lineTo(xOf(end),yH+4); ctx.stroke();
+      ctx.fillStyle='#9fb0c8';
+      ctx.fillText(`hold ${((end-edgeMs)/1000).toFixed(2)}s`, xOf(edgeMs)+6, yH-6);
     }
     ctx.fillStyle='#9fb0c8'; ctx.font='12px monospace';
     ctx.fillText('relay (0→3.3V)', 8, 16);
@@ -318,7 +530,7 @@ def show(title, steps):
 
   function render(){
     const r = compute();
-    drawScope(r.edge, r.gate);
+    drawScope(r.edge, r.fall, r.gate, val('detectMax'));
     const tb = $('report').querySelector('tbody'); tb.innerHTML='';
     r.steps.forEach((s,i)=>{
       tb.insertAdjacentHTML('beforeend',
@@ -326,23 +538,58 @@ def show(title, steps):
     });
     const v = verdict(r.steps);
     $('verdict').innerHTML = `Result: <span class="pill ${v}">${v}</span>`;
+
+    const why = $('why');
+    if(r.why){ why.textContent = r.why; why.classList.remove('hidden');
+               why.classList.toggle('ok', v === 'PASS'); }
+    else { why.classList.add('hidden'); }
+
+    // The button used to look dead whenever the inputs already matched the
+    // defaults, because the output was identical. Say when it last ran.
+    const t = new Date();
+    $('ranAt').textContent = 'last run ' + t.toTimeString().slice(0,8);
   }
 
-  $('test').addEventListener('change', ()=>{
-    const analog = $('test').value === 'analog';
+  function applyTestDefaults(){
+    const test = $('test').value;
+    const analog = test === 'analog';
     $('analogBox').classList.toggle('hidden', !analog);
     $('timingBox').classList.toggle('hidden', analog);
-    if($('test').value==='harmonic'){ $('trigger').value=1.5; $('tol').value=3; $('detectMax').value=2000; $('detectReal').value=1130; $('holdReal').value=3.20; }
-    if($('test').value==='overcurrent'){ $('trigger').value=200; $('detectReal').value=1200; $('holdReal').value=3.08; }
-    render();
-  });
+    if(test==='harmonic'){ $('trigger').value=1.5; $('tol').value=3; $('detectMax').value=2000;
+                           $('holdMin').value=3; $('detectReal').value=1130; $('holdReal').value=3.20; }
+    if(test==='overcurrent'){ $('trigger').value=200; $('tol').value=3; $('detectMax').value=2000;
+                              $('holdMin').value=3; $('detectReal').value=1200; $('holdReal').value=3.08; }
+    if(analog){ $('trigger').value=50; $('tol').value=1; }
+  }
+
+  $('test').addEventListener('change', ()=>{ applyTestDefaults(); render(); });
   $('runJs').addEventListener('click', render);
+  ['v2aReal','v2aAssumed','trigger','tol','detectMax','holdMin','detectReal','holdReal','gainErr']
+    .forEach(id => $(id).addEventListener('input', render));
+  $('autocal').addEventListener('change', render);
   render();
 
   // ---------- Pyodide tab ----------
   const enginePy = document.getElementById('engine-py').textContent;
-  const defaultCall = `\n# Edit these numbers, then run.\ncfg = SimConfig(volts_to_amps=10.0,\n                overcurrent_trigger_a=200.0, overcurrent_detect_ms=1200.0, overcurrent_hold_s=3.08,\n                analog_output_gain_error=0.03)\n\nshow("Overcurrent (slow_ac)", run_overcurrent(cfg, trigger=200, tol_pct=3, detect_max_ms=2000, hold_min_s=3))\nshow("Analog output (ch1_50a)", run_analog(cfg, requested=50, tol_pct=1))\n`;
-  $('pyCode').value = defaultCall.trim();
+  const defaultCall = [
+    '# Edit these numbers, then run. This is the real engine, not a mirror of it.',
+    'cfg = SimConfig(volts_to_amps=10.0,',
+    '                overcurrent_trigger_a=200.0, overcurrent_detect_ms=1200.0, overcurrent_hold_s=3.08,',
+    '                harmonic_detect_ms=1130.0, harmonic_hold_s=3.20,',
+    '                analog_output_gain_error=0.03)',
+    '',
+    'show("Overcurrent (slow_ac)",',
+    '     run_overcurrent(cfg, trigger=200, tol_pct=3, detect_max_ms=2000, hold_min_s=3))',
+    '',
+    'show("Analog output (ch1_50a)", run_analog(cfg, requested=50, tol_pct=1))',
+    '',
+    '# The point of measuring the ratio instead of trusting the config:',
+    'bench = SimConfig(volts_to_amps=12.0)   # the bench actually reads 12 A/Vrms',
+    'show("Overcurrent, ratio ASSUMED to be 10",',
+    '     run_overcurrent(bench, trigger=200, tol_pct=3, detect_max_ms=2000, hold_min_s=3,',
+    '                     autocal=False, assumed_ratio=10.0))',
+  ].join('\n');
+  $('pyCode').value = defaultCall;
 
   let pyodideReady = null;
   async function bootAndRun(){
@@ -357,9 +604,9 @@ def show(title, steps):
       status.textContent = 'Runtime ready.';
     }
     try{
-      pyodideReady.runPython(enginePy);                 // define the real engine
-      pyodideReady.runPython(`import io,sys; sys.stdout=io.StringIO()`);
-      pyodideReady.runPython($('pyCode').value);         // run the user's calls
+      pyodideReady.runPython(enginePy);
+      pyodideReady.runPython('import io,sys; sys.stdout=io.StringIO()');
+      pyodideReady.runPython($('pyCode').value);
       out.textContent = pyodideReady.runPython('sys.stdout.getvalue()');
       status.textContent = 'Done — that was real CPython running in your browser.';
     }catch(e){ out.textContent = String(e); status.textContent='Error.'; }
