@@ -38,12 +38,15 @@ jobs:
 
       - name: Lint
         run: ruff check .
+      - name: Format check
+        run: ruff format --check .
 
       - name: Type check
-        # Advisory: this is a gradual-typing gate, not a merge gate. It is
-        # reported rather than enforced so the badge means "the tests pass",
-        # which is a claim worth making, instead of "nobody added an Any".
-        continue-on-error: true
+        # Blocking, deliberately. This was advisory once, and a real error sat
+        # in SimConfig.from_mapping for days while the badge stayed green:
+        # GitHub reports a continue-on-error step as successful whether or not
+        # it failed, so nothing ever surfaced it. A check nobody can see the
+        # result of is worse than no check.
         run: mypy hiltf
 
       - name: Unit + integration tests

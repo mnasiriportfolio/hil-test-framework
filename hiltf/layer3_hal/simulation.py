@@ -24,7 +24,9 @@ The physics is intentionally simple but faithful in shape to a real bench:
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -83,28 +85,33 @@ class SimConfig:
     relay_high_v: float = 3.3
 
     @classmethod
-    def from_mapping(cls, raw: dict[str, object] | None) -> SimConfig:
+    def from_mapping(cls, raw: Mapping[str, Any] | None) -> SimConfig:
         """Build from the ``simulation:`` block of a bench config.
 
         Lives here rather than in the Layer 2 loader so that the standalone
         bench emulator can construct the identical device behaviour from the
         identical YAML without importing anything from Layer 2.
+
+        The values are typed ``Any`` because that is what they are: whatever
+        PyYAML decided a scalar was. Each one is coerced to the type its field
+        declares, so a config written ``50000`` and one written ``5.0e4`` end
+        up at the same place.
         """
-        raw = raw or {}
-        fields = {f: cls.__dataclass_fields__[f] for f in cls.__dataclass_fields__}
-        unknown = set(raw) - set(fields)
+        values = dict(raw or {})
+        fields = cls.__dataclass_fields__
+        unknown = set(values) - set(fields)
         if unknown:
             raise ValueError(
                 f"bench_config simulation: unknown key(s) {sorted(unknown)}; "
                 f"known keys are {sorted(fields)}"
             )
-        kwargs: dict[str, object] = {}
+        kwargs: dict[str, Any] = {}
         for name, field_def in fields.items():
-            if name not in raw:
+            if name not in values:
                 continue
-            caster = int if field_def.type in ("int", int) else float
-            kwargs[name] = caster(raw[name])  # type: ignore[arg-type]
-        return cls(**kwargs)  # type: ignore[arg-type]
+            caster: Callable[[Any], Any] = int if field_def.type in ("int", int) else float
+            kwargs[name] = caster(values[name])
+        return cls(**kwargs)
 
 
 class SimulatedBench:
