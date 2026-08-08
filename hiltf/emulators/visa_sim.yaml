@@ -54,6 +54,8 @@ devices:
       # than realistic: any test asserting on them is asserting on the parse.
       - q: "MEAS:VOLT:DC?"
         r: "1500.000000"
+      - q: "MEAS:VOLT:LINE?"
+        r: "1.500000"
       - q: "MEAS:CURR:AC?"
         r: "200.000000"
       - q: "MEAS:CURR:AC:HARM?"

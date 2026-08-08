@@ -104,24 +104,55 @@ def test_measurements_follow_the_stimulus(interp, bench):
     assert float(_reply(interp, scpi.measure_ac_current())) == pytest.approx(200.0, rel=1e-6)
 
 
-def test_harmonic_measurement_excludes_the_fundamental(interp):
+def test_harmonic_measurement_counts_ac_on_a_dc_line(interp):
+    """On a DC line every ampere of AC is contamination, fundamental included.
+
+    The detector is not looking for a high-order component of an AC supply; it
+    is looking for alternating current where the supply is direct. So the whole
+    AC content counts, and on an AC line the same reading means nothing and is
+    reported as zero rather than as distortion.
+    """
+    interp.execute(scpi.set_function(1, "DC"))
+    interp.execute(scpi.set_amplitude_vpp(1, 0.3))  # a DC line
+    interp.execute(scpi.set_output(1, True))
     interp.execute(scpi.set_function(2, "SIN"))
     interp.execute(scpi.set_amplitude_vpp(2, 10.0))
-    interp.execute(scpi.set_harmonic_vpp(2, 3, 2.0))
     interp.execute(scpi.set_output(2, True))
-    harmonic = float(_reply(interp, scpi.measure_harmonic_current()))
-    total = float(_reply(interp, scpi.measure_ac_current()))
-    assert harmonic == pytest.approx((2.0 / (2 * math.sqrt(2))) * 10.0)
-    assert total > harmonic
 
+    on_dc = float(_reply(interp, scpi.measure_harmonic_current()))
+    assert on_dc == pytest.approx((10.0 / (2 * math.sqrt(2))) * 10.0)
 
-def test_clear_harmonics_takes_effect(interp):
-    interp.execute(scpi.set_function(2, "SIN"))
-    interp.execute(scpi.set_harmonic_vpp(2, 3, 2.0))
-    interp.execute(scpi.set_output(2, True))
-    assert float(_reply(interp, scpi.measure_harmonic_current())) > 0
-    interp.execute(scpi.clear_harmonics(2))
+    interp.execute(scpi.set_function(1, "SIN"))  # same current, AC line now
     assert float(_reply(interp, scpi.measure_harmonic_current())) == pytest.approx(0.0)
+
+
+def test_line_voltage_is_queryable_over_scpi(interp, bench):
+    interp.execute(scpi.set_function(1, "DC"))
+    interp.execute(scpi.set_amplitude_vpp(1, 0.3))
+    interp.execute(scpi.set_output(1, True))
+    kv = float(_reply(interp, scpi.measure_line_kv()))
+    assert kv == pytest.approx(0.3 * bench.cfg.volts_to_kilovolts)
+
+
+def test_interrupt_output_carries_its_duration(interp, bench):
+    """The wire has to carry the length, or ride-through cannot be tested."""
+    interp.execute(scpi.set_function(1, "DC"))
+    interp.execute(scpi.set_amplitude_vpp(1, 0.3))
+    interp.execute(scpi.set_output(1, True))
+    assert bench.line_detected() is True
+
+    interp.execute(scpi.interrupt_output(1, bench.cfg.line_hole_ride_ms - 1.0))
+    assert bench.line_detected() is True
+
+    interp.execute(scpi.interrupt_output(1, bench.cfg.line_hole_ride_ms + 1.0))
+    assert bench.line_detected() is False
+
+
+def test_digitize_accepts_pin_and_contact_lines(interp):
+    """Detection and relay set time live on different traces of one capture."""
+    for line in ("stimulus", "overcurrent_pin", "overcurrent", "line"):
+        assert interp.execute(scpi.digitize_relay(line, 100.0)) is None
+        assert float(_reply(interp, scpi.waveform_points())) > 0
 
 
 def test_digitize_then_fetch(interp):

@@ -38,17 +38,53 @@ instruments:
 # case measures the ratio live and derives its levels from the measurement.
 # This block is the *device*, not the test's assumptions about it.
 simulation:
+  # --- bench calibrations: what the probes and dividers do ---------------
+  # Both are *measured* by every case before it drives anything. They live
+  # here only so that the simulated bench has something to be discovered.
   volts_to_amps: 10.0          # amps per Vrms on the current channel
+  volts_to_kilovolts: 5.0      # line kV per generator volt on the voltage channel
   voltage_channel: 1
   current_channel: 2
 
+  # --- line detection ----------------------------------------------------
+  # A 1.5 kV DC system. Pick-up needs the inner window; the device only lets
+  # go once the voltage leaves the wider outer one, so a supply sagging near
+  # the limit cannot chatter the contact.
+  line_in_low_kv: 1.000
+  line_in_high_kv: 1.900
+  line_out_low_kv: 0.950
+  line_out_high_kv: 1.950
+  line_in_ms: 1070.0
+  line_out_ms: 524.0
+  line_hole_ride_ms: 400.0     # a supply hole shorter than this is ridden through
+
+  # --- overcurrent -------------------------------------------------------
+  # The slow detector integrates an RMS current, so its detection time is a
+  # floor: tripping sooner would mean tripping on inrush. The fast one
+  # compares the instantaneous value and is specified as a ceiling.
   overcurrent_trigger_a: 200.0
-  overcurrent_detect_ms: 1200.0
+  overcurrent_detect_ms: 1215.0
   overcurrent_hold_s: 3.08
 
+  fast_overcurrent_trigger_a: 500.0   # instantaneous, not RMS
+  fast_overcurrent_detect_ms: 0.9     # from the crossing, not from the stimulus
+  fast_overcurrent_hold_s: 3.05
+
+  # --- harmonic: AC content riding on a DC line --------------------------
   harmonic_trigger_a: 1.5
-  harmonic_detect_ms: 1130.0
+  harmonic_detect_ms: 1175.0
   harmonic_hold_s: 3.20
 
-  analog_output_gain_error: 0.03   # 3 % gain error the self-cal discovers & corrects
+  # --- the contact itself ------------------------------------------------
+  relay_set_ms: 2.0            # digital pin asserted -> contact actually moved
+
+  # --- analog outputs: a 0..3 kV line mapped onto a 4-20 mA loop ---------
+  analog_full_scale_kv: 3.0
+  analog_full_scale_ma: 20.0
+  analog_zero_ma: 4.0
+  analog_error_ch1: 0.0009     # the per-channel gain errors the test measures
+  analog_error_ch2: -0.0040
+  analog_error_ch3: -0.0060
+  analog_error_ch4: 0.0013
+
   relay_high_v: 3.3                # asserted level of the relay line on the scope

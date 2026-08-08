@@ -1,4 +1,3 @@
-name,enabled,trigger,tolerance_pct,detect_max_ms,hold_min_s,harmonic_order,dut_channel
-dc_1500v_50hz,true,1.5,3,2000,3,3,
-alt_3000v_50hz,false,1.5,3,2000,3,3,
-validation_3000v,false,1.0,3,3000,3,5,
+name,enabled,trigger,tolerance_pct,harmonic_hz,drive_a,detect_min_ms,detect_max_ms,relay_set_max_ms,hold_min_s,line_kv
+dc_line_50hz,true,1.5,3,50,1.8,,2000,5,3,1.5
+dc_line_50hz_low,false,1.0,3,50,1.3,,3000,5,3,1.5

@@ -56,16 +56,37 @@ instruments:
 # and this section would be inert.
 simulation:
   volts_to_amps: 10.0
+  volts_to_kilovolts: 5.0
   voltage_channel: 1
   current_channel: 2
 
+  line_in_low_kv: 1.000
+  line_in_high_kv: 1.900
+  line_out_low_kv: 0.950
+  line_out_high_kv: 1.950
+  line_in_ms: 1070.0
+  line_out_ms: 524.0
+  line_hole_ride_ms: 400.0
+
   overcurrent_trigger_a: 200.0
-  overcurrent_detect_ms: 1200.0
+  overcurrent_detect_ms: 1215.0
   overcurrent_hold_s: 3.08
 
+  fast_overcurrent_trigger_a: 500.0
+  fast_overcurrent_detect_ms: 0.9
+  fast_overcurrent_hold_s: 3.05
+
   harmonic_trigger_a: 1.5
-  harmonic_detect_ms: 1130.0
+  harmonic_detect_ms: 1175.0
   harmonic_hold_s: 3.20
 
-  analog_output_gain_error: 0.03
+  relay_set_ms: 2.0
   relay_high_v: 3.3
+
+  analog_full_scale_kv: 3.0
+  analog_full_scale_ma: 20.0
+  analog_zero_ma: 4.0
+  analog_error_ch1: 0.0009
+  analog_error_ch2: -0.0040
+  analog_error_ch3: -0.0060
+  analog_error_ch4: 0.0013

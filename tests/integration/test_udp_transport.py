@@ -18,6 +18,7 @@ from hiltf.layer3_hal import dut_protocol as proto
 from hiltf.layer3_hal.dut_driver import BinaryUdpDut, DutTimeout
 
 CURRENT_CH = 2
+VOLTAGE_CH = 1
 
 
 @pytest.fixture()
@@ -39,30 +40,50 @@ def test_identity_is_read_at_connect(dut):
 
 def test_relay_states_follow_the_stimulus(dut):
     driver, emu = dut
-    assert driver.get_relay_states() == {"overcurrent": False, "harmonic": False}
+    assert driver.get_relay_states() == {
+        "line": False,
+        "overcurrent": False,
+        "fast_overcurrent": False,
+        "harmonic": False,
+    }
 
     # drive the shared bench directly — the point is that the DUT, reached over
     # UDP, reports the consequence of what the generator did over TCP
     emu.bench.configure_sine(CURRENT_CH, 30.0 * 2.0 * math.sqrt(2.0), 50.0)
     emu.bench.set_output(CURRENT_CH, True)
-    assert driver.get_relay_states()["overcurrent"] is True
+    states = driver.get_relay_states()
+    assert states["overcurrent"] is True
+    # 300 A RMS peaks at 424 A, which is under the 500 A instantaneous trigger
+    assert states["fast_overcurrent"] is False
+
+
+def _energise(bench, kv=1.5):
+    bench.configure_dc(VOLTAGE_CH, kv / bench.cfg.volts_to_kilovolts)
+    bench.set_output(VOLTAGE_CH, True)
 
 
 def test_analog_output_reads_back_per_channel(dut):
+    """The outputs are current loops, so what comes back over UDP is milliamps."""
     driver, emu = dut
-    emu.bench.configure_sine(CURRENT_CH, 10.0 * 2.0 * math.sqrt(2.0), 50.0)  # 100 A
-    emu.bench.set_output(CURRENT_CH, True)
-    # 3 % gain error is the device's ground truth
-    assert driver.read_analog_output(1) == pytest.approx(103.0, rel=1e-6)
+    _energise(emu.bench, kv=1.5)  # half of a 3 kV full scale
+    cfg = emu.bench.cfg
+
+    span = cfg.analog_full_scale_ma - cfg.analog_zero_ma
+    ideal = cfg.analog_zero_ma + span / 2.0  # 12 mA on a 4-20 mA loop
+    for channel in (1, 2, 3, 4):
+        expected = cfg.analog_zero_ma + (ideal - cfg.analog_zero_ma) * (
+            1.0 + cfg.analog_error(channel)
+        )
+        assert driver.read_analog_output(channel) == pytest.approx(expected, rel=1e-9)
 
 
 def test_correction_round_trips_through_the_device(dut):
     driver, emu = dut
-    emu.bench.configure_sine(CURRENT_CH, 10.0 * 2.0 * math.sqrt(2.0), 50.0)
-    emu.bench.set_output(CURRENT_CH, True)
+    _energise(emu.bench, kv=1.5)
 
-    driver.apply_analog_correction(100.0 / 103.0)
-    assert driver.read_analog_output(1) == pytest.approx(100.0, rel=1e-9)
+    before = driver.read_analog_output(1)
+    driver.apply_analog_correction(0.5)
+    assert driver.read_analog_output(1) == pytest.approx(before * 0.5, rel=1e-9)
 
 
 def test_refusal_raises_with_the_reason(dut):
@@ -139,7 +160,12 @@ def test_foreign_datagrams_do_not_become_measurements(dut):
         noise.sendto(b"\x00\x06junkjunkjunk", (emu.host, emu.dut_port))
     finally:
         noise.close()
-    assert driver.get_relay_states() == {"overcurrent": False, "harmonic": False}
+    assert set(driver.get_relay_states()) == {
+        "line",
+        "overcurrent",
+        "fast_overcurrent",
+        "harmonic",
+    }
 
 
 def test_operations_before_connect_are_refused(emulator):

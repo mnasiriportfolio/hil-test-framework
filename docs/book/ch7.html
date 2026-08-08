@@ -66,22 +66,45 @@ baseline = dmm.measure_ac_current_rms()
 idle = not dut.get_relay_states()["overcurrent"]
 _publish(bus, suite, case, "Relay idle before stimulus", ..., _outcome(idle))
 
-sg.configure_sine(ch, vpp_for_current(sc.trigger * TRIGGER_OVERDRIVE, ratio), 50.0)
-sg.output_on(ch)
-measured = dmm.measure_ac_current_rms()
-_publish(bus, suite, case, "Trigger level", ...,
-         _outcome(within_tolerance(measured, sc.trigger, sc.tolerance_pct)))
+lo, hi = tolerance_window(sc.trigger, sc.tolerance_pct)
 
-wf = osc.capture_relay("overcurrent", gate_ms=capture_gate_ms(sc))   # ONE capture
-t_ms = rising_edge_ms(wf)
-_publish(bus, suite, case, "Detection time (scope)", ...,
-         _outcome(timing_ok(t_ms, sc.detect_max_ms)))
+# 1) below the window: silence is the result
+sg.configure_sine(i_ch, _drive_vpp(quantity, lo * _BELOW_WINDOW_FACTOR, ratio), 50.0)
+sg.output_on(i_ch)
+_publish(bus, suite, case, "No trip below the trigger window", ...,
+         _outcome(not dut.get_relay_states()[detector]))
 
-hold_s = pulse_width_ms(wf) / 1000.0                                 # TWO measurements
-_publish(bus, suite, case, "Relay hold (scope)", ...,
-         _outcome(hold_ok(hold_s, sc.hold_min_s)))</code></pre>
+# 2) above it: a trip, which pins the trip point inside the window
+sg.configure_sine(i_ch, _drive_vpp(quantity, hi * _ABOVE_WINDOW_FACTOR, ratio), 50.0)
+_publish(bus, suite, case, "Trip above the trigger window", ...,
+         _outcome(dut.get_relay_states()[detector]))
 
-  <div class="box why"><b>Two things worth stopping on.</b>
+# 3) two probes on one acquisition -> three intervals
+pin     = osc.capture_relay(f"{detector}_pin", gate_ms)   # the decision
+contact = osc.capture_relay(detector,          gate_ms)   # the action
+detection = rising_edge_ms(pin)
+relay_set = rising_edge_ms(contact) - detection
+_publish(..., _outcome(timing_ok(detection, sc.detect_min_ms, sc.detect_max_ms)))
+_publish(..., _outcome(timing_ok(relay_set, max_ms=sc.relay_set_max_ms)))
+_publish(..., _outcome(hold_ok(pulse_width_ms(contact) / 1000.0, sc.hold_min_s)))</code></pre>
+
+  <div class="box why"><b>Why bracket the trigger instead of reading it back?</b>
+  An earlier version of this case drove the nominal trigger and checked that the meter read
+  the nominal trigger. That looks like a test and is not one: it measures the generator, and
+  it passes against a device with no detector in it at all. What the tolerance actually claims
+  is that the trip point lies somewhere inside a window, and the only way to see that is to
+  sit below the window and get silence, then above it and get a trip.</div>
+
+  <div class="box why"><b>Why two captures?</b>
+  Because a detection is not one event. The device asserts a digital pin when it decides, and
+  the contact physically moves some time later. Detection time, relay set time and total time
+  are three numbers against three limits. A single probe on the relay reports only the total,
+  so a device that overruns its contact-transit limit disappears into the slack of the
+  detection budget — green test, real defect. The two reads come from the same acquisition,
+  exactly as a scope is asked for channel 2 and then channel 3 of the capture it already
+  took, so they share a time origin and subtracting their edges means something.</div>
+
+  <div class="box why"><b>Two more things worth stopping on.</b>
   First, the ratio is <em>measured</em> at the top of every case. It would be easy to read it
   from config — it is right there — but on a real bench it is a property of the probe and the
   cabling on the day, and a stale one is invisible: every level is off by the same factor, so

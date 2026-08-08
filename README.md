@@ -90,12 +90,17 @@ protocols so a runner never starts against a half-open listener.
   NACK reason codes.
 - **Event-sourced reporting:** keywords publish results to a bus; a recorder
   subscribes and renders. Test logic never touches output format.
-- **Measured, not assumed.** Every case calibrates the generator's
-  volts-to-amps ratio against the meter before it computes a drive level, and
-  measures the relay's latch duration off the captured trace rather than asking
-  the device how long it intends to hold.
-- **Three real T&M test patterns:** overcurrent detection, harmonic detection,
-  and analog-output correctness with automated self-calibration.
+- **Measured, not assumed.** Every case calibrates the bench's volts-to-amps and
+  volts-to-kilovolts ratios against the meter before it computes a drive level,
+  and measures the relay's latch duration off the captured trace rather than
+  asking the device how long it intends to hold.
+- **Two probes, not one.** A detection has three intervals with three different
+  limits: the device deciding, the contact catching up, and the total the
+  outside world sees. Measuring only the total lets a slow contact hide inside
+  the detection budget.
+- **Five real T&M test patterns:** line detection with hysteresis and
+  ride-through, slow (RMS) and fast (instantaneous) overcurrent, harmonic
+  content on a DC line, and analog-output accuracy across a current loop.
 
 ## Architecture
 
@@ -120,20 +125,49 @@ less than the one below it:
 
 Full write-up, including the wire formats: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
-## The three tests
+## The five tests
 
-**Overcurrent detection** — calibrate the current path, confirm the relay is
-idle, drive just past the trigger, confirm the metered value against spec, then
-take **one** acquisition and get both numbers from it: the rising edge is the
-detection latency, the width to the falling edge is the latch duration.
+Every detection case is built the same way, and the shape matters more than the
+numbers. It **brackets the trigger**: sit below the tolerance window and require
+silence, then sit above it and require a trip. That pair is what pins the trip
+point inside the window. Driving the nominal trigger and checking the meter
+reads the nominal trigger measures the *generator* — it would pass against a
+device with no detector in it at all.
 
-**Harmonic detection** — hold a DC voltage, inject a harmonic on the current
-input, confirm the harmonic-band RMS trigger, then the same scope timing and
-hold.
+Then it times the result **on two probes of one acquisition**: the device's
+digital pin (the decision) and the relay contact (the action). Detection time,
+relay set time and total time are three different numbers against three
+different limits.
 
-**Analog-output correctness** — drive a known input, read the DUT's reproduced
-analog output; if the error exceeds tolerance, **compute and apply a calibration
-correction, then re-verify** (pre-cal reports as `CHECK`, post-cal as `PASS`).
+**Line detection** — find the pick-up threshold by creeping the supply up until
+the device reacts, then confirm it *keeps* declaring the line below that point:
+drop-out must sit lower than pick-up, or a supply resting near the limit
+chatters the contact. Then a timed supply interruption shorter than the
+ride-through must change nothing, and the drop-out edge is timed on its own
+acquisition, triggered on the supply going away.
+
+**Overcurrent, slow** — an integrating protection compared against an **RMS**
+current. Its detection time is a **floor**, not a ceiling: it must *not* trip
+before its time, because a protection that fires on inrush is a broken
+protection. This is the check a single "must be under N ms" limit inverts.
+
+**Overcurrent, fast** — the same procedure against the **instantaneous** current,
+specified as a ceiling. The same sine that reads 300 A RMS peaks at 424 A, so
+which quantity the detector compares is not a detail. Driven with AC, the
+measured time necessarily includes the sine climbing from its zero crossing to
+the threshold — a property of the stimulus, not the device, which is why an
+instantaneous limit is honestly verified with DC.
+
+**Harmonic detection** — hold the line at DC and inject alternating current. On
+a DC line every ampere of AC is contamination; on an AC line the fundamental
+*is* the line current and says nothing about distortion, so the same reading is
+reported as zero there.
+
+**Analog-output correctness** — apply a known line voltage, read the milliamps
+the device puts on its 4–20 mA loop, convert back through the loop's stated
+scaling and compare kilovolts with kilovolts. Every plan point is judged on its
+own: one averaged accuracy figure would let a channel that is wrong at one end
+of its span hide behind being right at the other.
 
 ## Design notes
 

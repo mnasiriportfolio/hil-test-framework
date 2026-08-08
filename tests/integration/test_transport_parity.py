@@ -23,12 +23,14 @@ from hiltf.layer2_engine import (
     load_plan,
     run_analog_output_case,
     run_harmonic_case,
+    run_line_detection_case,
     run_overcurrent_case,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
 
 PLANS = [
+    ("config/line_detection_plan.csv", run_line_detection_case),
     ("config/overcurrent_plan.csv", run_overcurrent_case),
     ("config/harmonic_plan.csv", run_harmonic_case),
     ("config/analog_out_plan.csv", run_analog_output_case),

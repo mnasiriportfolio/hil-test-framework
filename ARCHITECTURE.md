@@ -192,10 +192,40 @@ so the evidence for every later level is in the document.
 Wiring facts — which generator channel is the current input — stay in config.
 They describe how the bench is cabled, not what it measured.
 
-**One acquisition, two measurements.** The capture window is
-`detect_max + hold_min + margin`, so a single trace carries the rising edge
-(detection latency) and the width to the falling edge (latch duration). Asking
-the device how long it holds would only read back its own intention.
+**One acquisition, two probes, three intervals.** A detection is not one event.
+The device asserts a digital pin when it decides, and the physical contact
+follows one contact-transit later, so *detection time* (stimulus → pin),
+*relay set time* (pin → contact) and *total time* (stimulus → contact) are three
+different numbers against three different limits. Both digital lines are read
+from the same acquisition — the way a scope is asked for channel 2 and then
+channel 3 of the capture it already took — so they share a time origin and
+subtracting their edges is meaningful.
+
+Measuring only the contact reports the total, and a device that overruns its
+contact-transit limit then hides inside the slack of the detection budget. The
+latch duration comes from the same trace: asking the device how long it holds
+would only read back its own intention.
+
+**A detection limit has a direction, and it is not always a maximum.** A fast
+protection states a ceiling. A slow, integrating one states a *floor* — it must
+not trip before its time, because a protection that fires on inrush is a broken
+protection. `Scenario` therefore carries `detect_min_ms` and `detect_max_ms`,
+either of which a plan may leave blank to mean "the spec is silent". Collapsing
+them into a single maximum silently inverts half of every real specification,
+and the test still goes green, because the device is comfortably faster than a
+limit it was never supposed to be measured against.
+
+**Bracket the trigger; never read it back.** A tolerance says the trip point
+lies somewhere inside a window. The only way to see that is to sit below the
+window and get silence, then above it and get a trip. Driving the nominal
+trigger and confirming the meter reads the nominal trigger measures the
+generator — it passes against a device with no detector in it at all.
+
+**Levels are rounded to what the wire can carry.** Every transport formats
+setpoints as text with finite resolution, so Layer 2 rounds to that resolution
+before commanding. The instrument is then told exactly the number the test
+decided on, over any transport, which is what makes results comparable across
+them instead of differing in the last bit of a float.
 
 **The edge threshold comes from the trace.** Half-way between its low and high
 level, so a 3.3 V logic relay, a 5 V one and a 24 V industrial one all work with

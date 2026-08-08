@@ -3,236 +3,326 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>HIL Test Framework — Interactive Demo</title>
+<title>HIL Test Framework — Bench Console</title>
 <style>
+  /* ------------------------------------------------------------------
+     Deliberately plain desktop-tool styling: system grey chrome, square
+     corners, hairline borders, Helvetica. It is meant to read like an
+     instrument front-end an engineer put together, not a landing page.
+     ------------------------------------------------------------------ */
   :root{
-    --bg:#0e1726; --panel:#152238; --panel2:#1b2b45; --ink:#e6edf6; --muted:#9fb0c8;
-    --teal:#2ec7c0; --navy:#1f6feb; --pass:#37d67a; --check:#f4b740; --fail:#ff5c73;
-    --line:#26374f;
+    --face:#f0f0f0; --face-dark:#e2e2e2; --edge:#9b9b9b; --edge-soft:#c6c6c6;
+    --ink:#1a1a1a; --ink-soft:#555; --white:#fff;
+    --pass:#1a7f37; --fail:#a2142f; --check:#b26a00;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-  header{padding:22px 28px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#12203a,#0e1726)}
-  header h1{margin:0;font-size:20px}
-  header p{margin:4px 0 0;color:var(--muted)}
-  a{color:var(--teal)}
-  .wrap{max-width:1180px;margin:0 auto;padding:22px 28px}
-  .tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
-  .tab{padding:9px 16px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--muted);cursor:pointer}
-  .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
-  .grid{display:grid;grid-template-columns:360px 1fr;gap:20px}
-  @media(max-width:880px){.grid{grid-template-columns:1fr}}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
-  .card h3{margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--teal)}
-  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
-  select,input[type=number]{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
-  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .sub{font-size:11px;color:var(--muted);margin:2px 0 0}
-  .fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;margin-top:14px}
-  .fieldset > .legend{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--teal);font-weight:700}
-  .check{display:flex;align-items:flex-start;gap:9px;margin-top:10px}
-  .check input{margin-top:3px;width:16px;height:16px;accent-color:var(--teal)}
-  .check label{margin:0;color:var(--ink);font-size:13px}
-  button.run{margin-top:16px;width:100%;padding:11px;border:0;border-radius:9px;background:var(--teal);color:#04231f;font-weight:700;cursor:pointer;font-size:15px}
-  button.run:hover{filter:brightness(1.08)}
-  button.run:active{transform:translateY(1px)}
-  #ranAt{display:block;text-align:center;font-size:11px;color:var(--muted);margin-top:6px;min-height:14px}
-  canvas{width:100%;height:280px;background:#0a1220;border:1px solid var(--line);border-radius:10px}
-  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
-  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
-  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
-  .pill{padding:2px 9px;border-radius:20px;font-weight:700;font-size:12px}
-  .PASS{background:rgba(55,214,122,.15);color:var(--pass)}
-  .CHECK{background:rgba(244,183,64,.15);color:var(--check)}
-  .FAIL{background:rgba(255,92,115,.15);color:var(--fail)}
-  .verdict{font-size:18px;font-weight:800;margin:6px 0 0}
-  .note{color:var(--muted);font-size:13px;margin-top:10px}
-  .why{margin-top:10px;padding:10px 12px;border-left:3px solid var(--check);background:rgba(244,183,64,.07);
-       border-radius:0 8px 8px 0;font-size:13px;color:var(--ink)}
-  .why.ok{border-left-color:var(--pass);background:rgba(55,214,122,.06)}
-  pre{background:#0a1220;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font:13px/1.5 "SFMono-Regular",Consolas,monospace;color:#cfe3ff}
-  textarea{width:100%;height:300px;background:#0a1220;color:#cfe3ff;border:1px solid var(--line);border-radius:10px;padding:12px;font:13px/1.5 Consolas,monospace}
-  .hidden{display:none}
-  .badge{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:3px 11px;font-size:12px;color:var(--muted);margin-left:8px}
+  html,body{margin:0;padding:0}
+  body{background:#c9c9c9;color:var(--ink);font:12px/1.45 "Helvetica Neue",Helvetica,Arial,sans-serif}
+  .mono{font-family:Menlo,Consolas,"DejaVu Sans Mono",monospace}
+
+  .app{max-width:1340px;margin:16px auto 28px;background:var(--face);border:1px solid #7d7d7d;
+       box-shadow:0 1px 3px rgba(0,0,0,.28)}
+
+  .titlebar{background:linear-gradient(#f7f7f7,#e3e3e3);border-bottom:1px solid var(--edge);
+            padding:6px 12px;font-size:12px;font-weight:600;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .titlebar .sub{font-weight:400;color:var(--ink-soft);font-size:11px}
+  .titlebar a{color:#0645ad}
+  .menubar{background:var(--face);border-bottom:1px solid var(--edge-soft);padding:3px 12px;font-size:11px;color:#333}
+  .menubar span{margin-right:16px}
+
+  .tabs{display:flex;padding:8px 12px 0;background:var(--face-dark);border-bottom:1px solid var(--edge)}
+  .tab{padding:5px 15px;border:1px solid var(--edge);border-bottom:none;background:linear-gradient(#ebebeb,#dcdcdc);
+       color:#333;cursor:pointer;font-size:12px;margin-right:3px;position:relative;top:1px}
+  .tab.active{background:var(--face);color:#000;font-weight:600;padding-bottom:6px}
+
+  .body{padding:14px 12px 12px}
+  .cols{display:grid;grid-template-columns:340px 1fr;gap:12px;align-items:start}
+  @media(max-width:980px){.cols{grid-template-columns:1fr}}
+
+  fieldset{border:1px solid var(--edge);margin:0 0 10px;padding:8px 10px 10px;background:var(--face)}
+  legend{font-size:11px;font-weight:700;padding:0 4px;color:#2c2c2c}
+  fieldset.plot{padding:8px}
+
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .fld{margin-top:7px}
+  label{display:block;font-size:11px;color:#333;margin-bottom:2px}
+  .hint{font-size:10px;color:#6b6b6b;margin-top:2px}
+  select,input[type=number]{width:100%;padding:3px 5px;border:1px solid #7d7d7d;background:var(--white);
+    color:#000;font:12px Menlo,Consolas,monospace;border-radius:2px;height:24px}
+  select{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
+  input:focus,select:focus{outline:1px solid #4d90d9;outline-offset:-1px}
+
+  button{font:12px "Helvetica Neue",Helvetica,Arial,sans-serif;padding:5px 14px;border:1px solid #8c8c8c;
+    border-radius:3px;background:linear-gradient(#fdfdfd,#e4e4e4);color:#111;cursor:pointer}
+  button:hover:not(:disabled){background:linear-gradient(#fff,#ececec)}
+  button:active:not(:disabled){background:linear-gradient(#d9d9d9,#ececec)}
+  button:disabled{color:#9a9a9a;background:#ededed;cursor:default}
+  .runrow{display:flex;gap:8px;margin-top:12px}
+  #run{flex:1;font-weight:700}
+  #run.stale{border-color:#c07000;box-shadow:0 0 0 2px rgba(217,83,25,.18)}
+
+  .figwrap{position:relative;background:var(--white);border:1px solid #8c8c8c}
+  canvas{display:block;width:100%;height:auto}
+  .veil{position:absolute;inset:0;background:rgba(255,255,255,.62);display:none;align-items:center;justify-content:center}
+  .veil.on{display:flex}
+  .veil span{background:#fffbe6;border:1px solid #c9a227;padding:5px 12px;font-size:12px;color:#4a3800}
+
+  .statusbar{display:flex;justify-content:space-between;gap:12px;border:1px solid var(--edge-soft);
+             border-top:none;background:var(--face-dark);padding:3px 8px;font-size:11px;color:#333}
+
+  table{width:100%;border-collapse:collapse;background:var(--white);border:1px solid #a0a0a0;margin-top:2px}
+  th{background:#e4e4e4;border:1px solid #c4c4c4;font-size:11px;font-weight:700;text-align:left;padding:4px 7px;color:#2c2c2c}
+  td{border:1px solid #dcdcdc;padding:4px 7px;font-size:12px}
+  tbody tr:nth-child(even) td{background:#f7f7f7}
+  td.num{font-family:Menlo,Consolas,monospace;text-align:right;white-space:nowrap}
+  .tag{display:inline-block;padding:1px 7px;font-size:11px;font-weight:700;border:1px solid;border-radius:2px}
+  .tag.PASS{color:var(--pass);border-color:#9ccfa8;background:#eef7f0}
+  .tag.FAIL{color:var(--fail);border-color:#dda6b1;background:#fbeef1}
+  .tag.CHECK{color:var(--check);border-color:#e0c089;background:#fdf5e7}
+  .verdict{margin:10px 0 0;font-size:12px}
+
+  .note{border:1px solid #c9a227;border-left-width:4px;background:#fffbe6;padding:8px 10px;margin-top:10px;
+        font-size:12px;color:#3d3000}
+  p.tip{font-size:11px;color:#4a4a4a;margin:10px 0 0;border-top:1px solid var(--edge-soft);padding-top:8px}
+
+  pre{background:var(--white);border:1px solid #a0a0a0;padding:9px;overflow:auto;
+      font:12px/1.45 Menlo,Consolas,monospace;color:#111;margin:0;max-height:420px}
+  textarea{width:100%;height:290px;background:var(--white);color:#111;border:1px solid #a0a0a0;padding:8px;
+           font:12px/1.45 Menlo,Consolas,monospace}
+  .hidden{display:none !important}
+  a{color:#0645ad}
 </style>
 </head>
 <body>
-<header>
-  <h1>HIL Test Framework — Interactive Demo <span class="badge">simulated bench, no hardware</span></h1>
-  <p>Change the plan (the spec) or the device (simulated reality) and watch the test run: live calibration, oscilloscope timing, tolerance checks, self-calibration. <a href="../index.html">← project hub</a></p>
-</header>
+<div class="app">
 
-<div class="wrap">
-  <div class="tabs">
-    <div class="tab active" data-tab="js">▶ Interactive simulator</div>
-    <div class="tab" data-tab="py">🐍 Run the real Python (Pyodide)</div>
+  <div class="titlebar">
+    HIL Test Framework — Bench Console
+    <span class="sub">simulated bench · no hardware attached · <a href="../index.html">project hub</a></span>
+  </div>
+  <div class="menubar">
+    <span>Bench: <b>bench_config.yaml</b></span>
+    <span>Transport: <b>in-process simulation</b></span>
+    <span>Scope: <b>20 kS/s (bench runs 50 kS/s)</b></span>
+    <span>Probes: <b>stimulus · digital pin · relay contact</b></span>
   </div>
 
-  <!-- ============ JS SIMULATOR ============ -->
+  <div class="tabs">
+    <div class="tab active" data-tab="js">Bench console</div>
+    <div class="tab" data-tab="py">Python engine (Pyodide)</div>
+  </div>
+
+  <div class="body">
+
   <section id="tab-js">
-    <div class="grid">
-      <div class="card">
-        <h3>Controls</h3>
-        <label>Test</label>
-        <select id="test">
-          <option value="overcurrent">Overcurrent detection</option>
-          <option value="harmonic">Harmonic detection</option>
-          <option value="analog">Analog-output correctness</option>
-        </select>
+    <div class="cols">
+      <div>
+        <fieldset>
+          <legend>Test case</legend>
+          <select id="test">
+            <option value="line">Line detection — pick-up, hysteresis, drop-out</option>
+            <option value="slow">Overcurrent, slow — RMS trigger</option>
+            <option value="fast">Overcurrent, fast — instantaneous trigger</option>
+            <option value="harmonic">Harmonic — AC content on a DC line</option>
+            <option value="analog">Analog output — 4–20 mA loop</option>
+          </select>
+        </fieldset>
 
-        <div class="fieldset">
-          <span class="legend">Current path calibration</span>
-          <div class="two">
-            <div>
-              <label>Bench: actual A per Vrms</label>
-              <input id="v2aReal" type="number" value="10" step="0.5" />
-              <p class="sub">the truth</p>
-            </div>
-            <div>
-              <label>Config: assumed A per Vrms</label>
-              <input id="v2aAssumed" type="number" value="10" step="0.5" />
-              <p class="sub">what the YAML says</p>
-            </div>
+        <fieldset>
+          <legend>Bench calibration (measured, never assumed)</legend>
+          <div class="fld" data-for="slow fast harmonic">
+            <label>Current path (A per Vrms)</label>
+            <input id="v2a" type="number" value="10" step="0.5" />
           </div>
-          <div class="check">
-            <input id="autocal" type="checkbox" checked />
-            <label for="autocal">Measure the ratio before the test<br>
-              <span class="sub">the framework's standing rule — uncheck it and it trusts the config instead</span>
-            </label>
+          <div class="fld" data-for="line analog">
+            <label>Voltage path (kV per V)</label>
+            <input id="v2kv" type="number" value="5" step="0.5" />
           </div>
+          <div class="fld" data-for="line harmonic">
+            <label>Line voltage (kV)</label>
+            <input id="lineKv" type="number" value="1.5" step="0.1" />
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Specification (test plan)</legend>
+          <div class="row">
+            <div class="fld" data-for="slow fast harmonic">
+              <label>Trigger</label><input id="trigger" type="number" value="200" step="1" />
+            </div>
+            <div class="fld"><label>Tolerance (%)</label><input id="tol" type="number" value="3" step="0.5" /></div>
+          </div>
+          <div class="row">
+            <div class="fld" data-for="slow"><label>Detect floor (ms)</label>
+              <input id="detectMin" type="number" value="1200" step="50" />
+              <div class="hint">must NOT trip before this</div></div>
+            <div class="fld" data-for="fast harmonic line"><label>Detect ceiling (ms)</label>
+              <input id="detectMax" type="number" value="5" step="1" /></div>
+            <div class="fld"><label>Relay set max (ms)</label>
+              <input id="relaySetMax" type="number" value="5" step="1" /></div>
+            <div class="fld" data-for="slow fast harmonic"><label>Hold min (s)</label>
+              <input id="holdMin" type="number" value="3" step="0.1" /></div>
+            <div class="fld" data-for="line"><label>Drop-out max (ms)</label>
+              <input id="releaseMax" type="number" value="1000" step="50" /></div>
+          </div>
+          <div class="row" data-for="line">
+            <div class="fld"><label>Pick-up (kV)</label><input id="inLow" type="number" value="1.0" step="0.05" /></div>
+            <div class="fld"><label>Drop-out (kV)</label><input id="outLow" type="number" value="0.95" step="0.05" /></div>
+          </div>
+          <div class="row" data-for="analog">
+            <div class="fld"><label>Full scale (kV)</label><input id="fsKv" type="number" value="3" step="0.5" /></div>
+            <div class="fld"><label>Channel</label><input id="dutChannel" type="number" value="1" step="1" min="1" max="4" /></div>
+            <div class="fld"><label>Loop zero (mA)</label><input id="zeroMa" type="number" value="4" step="1" /></div>
+            <div class="fld"><label>Loop full scale (mA)</label><input id="fsMa" type="number" value="20" step="1" /></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Device under test (simulated reality)</legend>
+          <div class="row">
+            <div class="fld" data-for="slow fast harmonic"><label>Real trip point (A)</label>
+              <input id="devTrigger" type="number" value="200" step="1" /></div>
+            <div class="fld" data-for="slow fast harmonic"><label>Drive for timing (A)</label>
+              <input id="driveA" type="number" value="300" step="10" /></div>
+            <div class="fld" data-for="line"><label>Real pick-up (kV)</label>
+              <input id="devInKv" type="number" value="1.0" step="0.01" /></div>
+            <div class="fld" data-for="line"><label>Real drop-out (kV)</label>
+              <input id="devOutKv" type="number" value="0.95" step="0.01" /></div>
+            <div class="fld"><label id="devDetectLabel">Real detect (ms)</label>
+              <input id="devDetect" type="number" value="1215" step="5" /></div>
+            <div class="fld"><label>Relay set (ms)</label>
+              <input id="devRelaySet" type="number" value="2" step="0.5" />
+              <div class="hint">pin → contact</div></div>
+            <div class="fld" data-for="slow fast harmonic"><label>Real hold (s)</label>
+              <input id="devHold" type="number" value="3.08" step="0.05" /></div>
+            <div class="fld" data-for="line"><label>Real drop-out (ms)</label>
+              <input id="devOutMs" type="number" value="524" step="10" /></div>
+            <div class="fld" data-for="line"><label>Ride-through (ms)</label>
+              <input id="devRideMs" type="number" value="400" step="50" /></div>
+            <div class="fld" data-for="line"><label>Test supply hole (ms)</label>
+              <input id="holeMs" type="number" value="300" step="50" /></div>
+            <div class="fld" data-for="analog"><label>Gain error (%)</label>
+              <input id="gainErr" type="number" value="0.09" step="0.05" /></div>
+          </div>
+        </fieldset>
+
+        <div class="runrow">
+          <button id="run">Run test</button>
+          <button id="reset">Defaults</button>
         </div>
-
-        <div class="two">
-          <div>
-            <label>Plan: trigger (A)</label>
-            <input id="trigger" type="number" value="200" step="1" />
-            <p class="sub">the spec value</p>
-          </div>
-          <div>
-            <label>Plan: tolerance (%)</label>
-            <input id="tol" type="number" value="3" step="0.5" />
-          </div>
-        </div>
-
-        <div id="timingBox">
-          <div class="two">
-            <div>
-              <label>Plan: max detect (ms)</label>
-              <input id="detectMax" type="number" value="2000" step="50" />
-            </div>
-            <div>
-              <label>Plan: min hold (s)</label>
-              <input id="holdMin" type="number" value="3" step="0.1" />
-            </div>
-          </div>
-          <div class="two">
-            <div>
-              <label>Device: real detect (ms)</label>
-              <input id="detectReal" type="number" value="1200" step="50" />
-              <p class="sub">simulated reality</p>
-            </div>
-            <div>
-              <label>Device: real hold (s)</label>
-              <input id="holdReal" type="number" value="3.08" step="0.05" />
-            </div>
-          </div>
-        </div>
-
-        <div id="analogBox" class="hidden">
-          <label>Device: analog gain error (%)</label>
-          <input id="gainErr" type="number" value="3" step="0.5" />
-          <p class="sub">the self-cal discovers &amp; corrects this</p>
-        </div>
-
-        <button class="run" id="runJs">Run test</button>
-        <span id="ranAt"></span>
-        <p class="note">Try it: set <b>bench actual</b> to 12 while <b>config assumed</b> stays 10.
-          With the ratio measured, it still passes. Uncheck the box and the drive level is computed
-          from a stale number — every reading is off by the same factor, and the test fails.</p>
+        <p class="tip" id="tip"></p>
       </div>
 
-      <div class="card">
-        <h3>Oscilloscope + report</h3>
-        <canvas id="scope" width="760" height="280"></canvas>
-        <div id="verdict" class="verdict"></div>
-        <div id="why" class="why hidden"></div>
-        <table id="report"><thead><tr><th>#</th><th>Check</th><th>Expected</th><th>Measured</th><th>Outcome</th></tr></thead><tbody></tbody></table>
+      <div>
+        <fieldset class="plot">
+          <legend>Acquisition</legend>
+          <div class="figwrap">
+            <canvas id="fig" width="1180" height="700"></canvas>
+            <div class="veil" id="veil"><span>Parameters changed — press <b>Run test</b> to re-acquire</span></div>
+          </div>
+          <div class="statusbar">
+            <span id="status">Ready.</span>
+            <span id="acqinfo" class="mono"></span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Report</legend>
+          <table id="report">
+            <thead><tr><th style="width:26px">#</th><th>Check</th><th>Expected</th><th>Measured</th><th style="width:76px">Outcome</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <p class="verdict" id="verdict"></p>
+          <div id="why" class="note hidden"></div>
+        </fieldset>
       </div>
     </div>
   </section>
 
-  <!-- ============ PYODIDE ============ -->
   <section id="tab-py" class="hidden">
-    <div class="grid">
-      <div class="card">
-        <h3>The real engine, in your browser</h3>
-        <p class="note">This tab boots <a href="https://pyodide.org" target="_blank" rel="noopener">Pyodide</a> (CPython compiled to WebAssembly) and runs the framework's actual simulation + keyword logic — live calibration, the trigger overdrive, and the hold measured as a pulse width off one capture, exactly as in <code>hiltf/layer2_engine/keywords.py</code>. First run downloads the runtime (~a few MB), so give it a moment.</p>
-        <button class="run" id="runPy">Boot Python &amp; run</button>
-        <p id="pyStatus" class="note"></p>
+    <div class="cols">
+      <div>
+        <fieldset>
+          <legend>Real engine, in the browser</legend>
+          <p style="margin:0 0 10px">This tab boots <a href="https://pyodide.org" target="_blank" rel="noopener">Pyodide</a>
+          (CPython compiled to WebAssembly) and runs the framework's actual device model and keyword
+          logic — the hysteretic line detector, the two overcurrent detectors that compare different
+          quantities, and the three timing intervals measured from two probes, exactly as in
+          <code class="mono">hiltf/layer3_hal/simulation.py</code>. First run downloads the runtime
+          (a few MB), so give it a moment.</p>
+          <button id="runPy">Boot Python &amp; run</button>
+          <p id="pyStatus" class="hint" style="margin-top:8px"></p>
+        </fieldset>
       </div>
-      <div class="card">
-        <h3>Editable Python</h3>
-        <textarea id="pyCode"></textarea>
-        <h3 style="margin-top:16px">Output</h3>
-        <pre id="pyOut">(not run yet)</pre>
+      <div>
+        <fieldset><legend>Editable source</legend><textarea id="pyCode" spellcheck="false"></textarea></fieldset>
+        <fieldset><legend>Output</legend><pre id="pyOut">(not run yet)</pre></fieldset>
       </div>
     </div>
   </section>
+
+  </div>
 </div>
 
-<!-- The real engine core, embedded so the Pyodide tab runs actual Python.
-     Mirrors hiltf/layer3_hal/simulation.py + hiltf/layer2_engine/keywords.py,
-     including calibrate_volts_to_amps, TRIGGER_OVERDRIVE and the scope-measured
-     hold (one capture, two measurements). -->
+<!-- The engine core, embedded so the Pyodide tab runs actual Python. Mirrors
+     hiltf/layer3_hal/simulation.py and hiltf/layer2_engine/keywords.py: the
+     hysteretic line latch, RMS vs instantaneous overcurrent, AC-on-DC harmonic
+     content, and detection / relay-set / total measured from two probes. -->
 <script id="engine-py" type="text/x-python">
 import math
 
 SQRT2 = math.sqrt(2.0)
-
-# keywords.TRIGGER_OVERDRIVE -- commanding *exactly* the threshold is undefined:
-# the generator has finite command resolution and the detector has hysteresis,
-# so a test that means "cross it" states its margin.
-TRIGGER_OVERDRIVE = 1.01
-CALIBRATION_PROBE_VPP = 1.0
+BELOW_WINDOW, ABOVE_WINDOW = 0.95, 1.05
+LINE_HZ = 50.0
 
 
-class SimConfig:
-    def __init__(self, volts_to_amps=10.0, overcurrent_trigger_a=200.0,
-                 overcurrent_detect_ms=1200.0, overcurrent_hold_s=3.08,
-                 harmonic_trigger_a=1.5, harmonic_detect_ms=1130.0, harmonic_hold_s=3.20,
-                 analog_output_gain_error=0.03, relay_high_v=3.3):
-        self.volts_to_amps = volts_to_amps
-        self.overcurrent_trigger_a = overcurrent_trigger_a
-        self.overcurrent_detect_ms = overcurrent_detect_ms
-        self.overcurrent_hold_s = overcurrent_hold_s
-        self.harmonic_trigger_a = harmonic_trigger_a
-        self.harmonic_detect_ms = harmonic_detect_ms
-        self.harmonic_hold_s = harmonic_hold_s
-        self.analog_output_gain_error = analog_output_gain_error
-        self.relay_high_v = relay_high_v
+class Device:
+    """Ground truth. The tests below never read these values to decide what to
+    drive — they measure, exactly as the framework does on a real bench."""
 
+    def __init__(self,
+                 line_in_kv=1.000, line_out_kv=0.950,
+                 line_in_ms=1070.0, line_out_ms=524.0, line_hole_ride_ms=400.0,
+                 overcurrent_trigger_a=200.0, overcurrent_detect_ms=1215.0, overcurrent_hold_s=3.08,
+                 fast_trigger_a=500.0, fast_detect_ms=0.9, fast_hold_s=3.05,
+                 harmonic_trigger_a=1.5, harmonic_detect_ms=1175.0, harmonic_hold_s=3.20,
+                 relay_set_ms=2.0,
+                 analog_full_scale_kv=3.0, analog_zero_ma=4.0, analog_full_scale_ma=20.0,
+                 analog_gain_error=0.0009):
+        self.__dict__.update(locals())
+        del self.__dict__["self"]
 
-def quantize_vpp(vpp):
-    """SCPI carries the level as text with finite resolution."""
-    return float("%.6f" % vpp)
+    # --- line detection is hysteretic: pick up high, let go lower --------
+    def line_declared(self, kv, previously):
+        return kv >= self.line_out_kv if previously else kv >= self.line_in_kv
 
+    def rides_through(self, hole_ms):
+        return hole_ms <= self.line_hole_ride_ms
 
-def calibrate_volts_to_amps(cfg):
-    """Drive a small known probe, read the meter, divide.
+    # --- the two overcurrent detectors compare different quantities ------
+    def slow_tripped(self, rms_a):
+        return rms_a >= self.overcurrent_trigger_a
 
-    The framework never reads this ratio out of config: on a real bench it is a
-    property of the probe and the cabling on the day, and a stale one silently
-    invalidates a whole campaign because every level is off by the same factor.
-    """
-    vrms = CALIBRATION_PROBE_VPP / (2.0 * SQRT2)
-    amps = vrms * cfg.volts_to_amps
-    if amps <= 0:
-        raise RuntimeError("calibration probe produced no current")
-    return amps / vrms
+    def fast_tripped(self, peak_a):
+        return peak_a >= self.fast_trigger_a
 
+    def fast_detect_ms_for(self, peak_a):
+        """An instantaneous detector cannot answer before the sine arrives.
 
-def vpp_for_current(amps, ratio):
-    return (amps / ratio) * 2.0 * SQRT2
+        For a peak only just above the threshold the crossing happens late in
+        the quarter cycle; far above it, almost at once. The delay belongs to
+        the stimulus, which is why an AC measurement of an instantaneous limit
+        always reads high and why the honest way to verify it is with DC.
+        """
+        if peak_a <= self.fast_trigger_a:
+            return float("inf")
+        phase = math.asin(self.fast_trigger_a / peak_a) / (2 * math.pi * LINE_HZ) * 1000.0
+        return phase + self.fast_detect_ms
+
+    def analog_ma(self, kv):
+        span = self.analog_full_scale_ma - self.analog_zero_ma
+        signal = (kv / self.analog_full_scale_kv) * span
+        return self.analog_zero_ma + signal * (1.0 + self.analog_gain_error)
 
 
 def tolerance_window(trigger, tol_pct):
@@ -240,108 +330,137 @@ def tolerance_window(trigger, tol_pct):
     return trigger - d, trigger + d
 
 
-def within_tol(m, trigger, tol_pct):
+def within_tolerance(m, trigger, tol_pct):
     lo, hi = tolerance_window(trigger, tol_pct)
     return lo <= m <= hi
 
 
-def relay_trace(cfg, detect_ms, hold_s, gate_ms, sample_rate=50000.0):
-    """0 V, then high at the trip, then low again -- one capture, two answers."""
-    dt = 1.0 / sample_rate
-    n = max(1, int((gate_ms / 1000.0) / dt))
-    rise = int((detect_ms / 1000.0) / dt)
-    fall = rise + int(hold_s / dt)
-    return dt, [cfg.relay_high_v if rise <= i < fall else 0.0 for i in range(n)]
+def timing_ok(measured_ms, min_ms=0.0, max_ms=float("inf")):
+    """Both bounds, because real specifications are written both ways round.
+
+    A fast protection states a ceiling. A slow one states a floor: it must not
+    trip before its time, because a protection that fires on inrush is broken.
+    An infinite edge time is 'no edge was seen', never 'very fast'.
+    """
+    if not math.isfinite(measured_ms) or measured_ms <= 0:
+        return False
+    return min_ms <= measured_ms <= max_ms
 
 
-def edges_ms(samples, dt_s):
-    """(rising, falling); threshold derived from the trace, not hardcoded."""
-    lo, hi = min(samples), max(samples)
-    if hi - lo < 0.5:
-        return float("inf"), float("inf")
-    threshold = (lo + hi) / 2.0
-    rise = next((i for i, v in enumerate(samples) if v >= threshold), None)
-    if rise is None:
-        return float("inf"), float("inf")
-    fall = next((i for i in range(rise, len(samples)) if samples[i] < threshold), None)
-    to_ms = dt_s * 1000.0
-    return rise * to_ms, (float("inf") if fall is None else fall * to_ms)
+def detect_window(min_ms, max_ms):
+    if min_ms <= 0 and max_ms == float("inf"):
+        return "unspecified"
+    if min_ms <= 0:
+        return "< %g ms" % max_ms
+    if max_ms == float("inf"):
+        return ">= %g ms" % min_ms
+    return "%g-%g ms" % (min_ms, max_ms)
 
 
-def pulse_width_ms(samples, dt_s):
-    rise, fall = edges_ms(samples, dt_s)
-    if rise == float("inf"):
-        return 0.0
-    if fall == float("inf"):
-        return len(samples) * dt_s * 1000.0 - rise
-    return fall - rise
+def timing_steps(detect_ms, relay_set_ms, hold_s, spec):
+    """Detection, contact transit, total and hold — four separate answers.
+
+    A single probe on the relay reports only the total, and a device that
+    misses its contact-transit limit hides inside the slack of the other
+    budget. Two probes is not thoroughness, it is the only way to see it.
+    """
+    total = detect_ms + relay_set_ms
+    return [
+        ("Detection time (stimulus -> pin)", detect_window(spec["detect_min"], spec["detect_max"]),
+         "%.1f ms" % detect_ms,
+         "PASS" if timing_ok(detect_ms, spec["detect_min"], spec["detect_max"]) else "FAIL"),
+        ("Relay set time (pin -> contact)", "< %g ms" % spec["relay_set_max"],
+         "%.1f ms" % relay_set_ms,
+         "PASS" if timing_ok(relay_set_ms, 0.0, spec["relay_set_max"]) else "FAIL"),
+        ("Total time (stimulus -> contact)", "detection + relay set", "%.1f ms" % total, "PASS"),
+        ("Relay hold", ">= %g s" % spec["hold_min"], "%.2f s" % hold_s,
+         "PASS" if hold_s >= spec["hold_min"] else "FAIL"),
+    ]
 
 
-def _timed_case(cfg, title, trigger, tol_pct, detect_max_ms, hold_min_s,
-                detect_ms, hold_s, autocal=True, assumed_ratio=None):
-    steps = []
-    ratio = calibrate_volts_to_amps(cfg) if autocal else assumed_ratio
-    steps.append(("Volts-to-amps ratio",
-                  "measured live" if autocal else "from config (not measured)",
-                  "%.4f A/Vrms" % ratio, "PASS" if autocal else "CHECK"))
-
-    vpp = quantize_vpp(vpp_for_current(trigger * TRIGGER_OVERDRIVE, ratio))
-    measured = (vpp / (2.0 * SQRT2)) * cfg.volts_to_amps
+def run_overcurrent(dev, trigger, tol_pct, drive_a, spec, fast=False):
+    quantity = "peak" if fast else "rms"
+    trips = dev.fast_tripped if fast else dev.slow_tripped
     lo, hi = tolerance_window(trigger, tol_pct)
-    steps.append(("Trigger level", "%g A (%.3f-%.3f)" % (trigger, lo, hi),
-                  "%.3f A" % measured, "PASS" if within_tol(measured, trigger, tol_pct) else "FAIL"))
+    steps = []
 
-    gate = detect_max_ms + hold_min_s * 1000.0 + 500.0
-    dt, wf = relay_trace(cfg, detect_ms, hold_s, gate)
-    t, _ = edges_ms(wf, dt)
-    steps.append(("Detection time (scope)", "<= %g ms" % detect_max_ms,
-                  "%.1f ms" % t if t != float("inf") else "no edge",
-                  "PASS" if 0 < t <= detect_max_ms else "FAIL"))
+    below = lo * BELOW_WINDOW
+    steps.append(("No trip below the window", "idle at %.1f A (%s)" % (below, quantity),
+                  "relay %s" % ("idle" if not trips(below) else "driven"),
+                  "PASS" if not trips(below) else "FAIL"))
 
-    held = pulse_width_ms(wf, dt) / 1000.0
-    steps.append(("Relay hold (scope)", ">= %g s" % hold_min_s, "%.2f s" % held,
-                  "PASS" if held >= hold_min_s else "FAIL"))
+    above = hi * ABOVE_WINDOW
+    steps.append(("Trip above the window", "trip at %.1f A (%s)" % (above, quantity),
+                  "relay %s" % ("driven" if trips(above) else "idle"),
+                  "PASS" if trips(above) else "FAIL"))
+
+    peak = drive_a if fast else drive_a * SQRT2
+    detect = dev.fast_detect_ms_for(peak) if fast else dev.overcurrent_detect_ms
+    hold = dev.fast_hold_s if fast else dev.overcurrent_hold_s
+    steps += timing_steps(detect, dev.relay_set_ms, hold, spec)
     return steps
 
 
-def run_overcurrent(cfg, trigger, tol_pct, detect_max_ms, hold_min_s,
-                    autocal=True, assumed_ratio=None):
-    return _timed_case(cfg, "overcurrent", trigger, tol_pct, detect_max_ms, hold_min_s,
-                       cfg.overcurrent_detect_ms, cfg.overcurrent_hold_s,
-                       autocal, assumed_ratio)
+def run_harmonic(dev, trigger, tol_pct, drive_a, spec, line_kv=1.5):
+    lo, hi = tolerance_window(trigger, tol_pct)
+    steps = [("Line held at DC", "any AC content is then contamination",
+              "%.2f kV DC" % line_kv, "PASS")]
+    below, above = lo * BELOW_WINDOW, hi * ABOVE_WINDOW
+    steps.append(("No trip below the window", "idle at %.2f A" % below,
+                  "relay %s" % ("idle" if below < dev.harmonic_trigger_a else "driven"),
+                  "PASS" if below < dev.harmonic_trigger_a else "FAIL"))
+    steps.append(("Trip above the window (%g Hz)" % LINE_HZ, "trip at %.2f A" % above,
+                  "relay %s" % ("driven" if above >= dev.harmonic_trigger_a else "idle"),
+                  "PASS" if above >= dev.harmonic_trigger_a else "FAIL"))
+    steps += timing_steps(dev.harmonic_detect_ms, dev.relay_set_ms, dev.harmonic_hold_s, spec)
+    return steps
 
 
-def run_harmonic(cfg, trigger, tol_pct, detect_max_ms, hold_min_s,
-                 autocal=True, assumed_ratio=None):
-    return _timed_case(cfg, "harmonic", trigger, tol_pct, detect_max_ms, hold_min_s,
-                       cfg.harmonic_detect_ms, cfg.harmonic_hold_s,
-                       autocal, assumed_ratio)
+def run_line_detection(dev, nominal_kv, tol_pct, spec, hole_ms=300.0):
+    steps = [("Pick-up threshold", "%g kV +/- %g %%" % (spec["in_kv"], tol_pct),
+              "%.3f kV" % dev.line_in_kv,
+              "PASS" if within_tolerance(dev.line_in_kv, spec["in_kv"], tol_pct) else "FAIL")]
+
+    between = (dev.line_out_kv + dev.line_in_kv) / 2.0
+    held = dev.line_declared(between, previously=True)
+    steps.append(("Holds below pick-up (hysteresis)", "still declared at %.3f kV" % between,
+                  "relay %s" % ("driven" if held else "idle"), "PASS" if held else "FAIL"))
+
+    steps.append(("Drop-out threshold", "%g kV +/- %g %%, below pick-up" % (spec["out_kv"], tol_pct),
+                  "%.3f kV" % dev.line_out_kv,
+                  "PASS" if (within_tolerance(dev.line_out_kv, spec["out_kv"], tol_pct)
+                             and dev.line_out_kv < dev.line_in_kv) else "FAIL"))
+
+    total_in = dev.line_in_ms + dev.relay_set_ms
+    steps.append(("Line-in time (stimulus -> contact)", "< %g ms" % spec["detect_max"],
+                  "%.1f ms" % total_in,
+                  "PASS" if timing_ok(dev.line_in_ms, 0.0, spec["detect_max"]) else "FAIL"))
+    steps.append(("Relay set time (pin -> contact)", "< %g ms" % spec["relay_set_max"],
+                  "%.1f ms" % dev.relay_set_ms,
+                  "PASS" if timing_ok(dev.relay_set_ms, 0.0, spec["relay_set_max"]) else "FAIL"))
+
+    rides = dev.rides_through(hole_ms)
+    steps.append(("Rides through a short supply hole", "still declared after %g ms" % hole_ms,
+                  "relay %s" % ("driven" if rides else "idle"), "PASS" if rides else "FAIL"))
+
+    total_out = dev.line_out_ms + dev.relay_set_ms
+    steps.append(("Line-out time (supply gone -> contact opens)", "< %g ms" % spec["release_max"],
+                  "%.1f ms" % total_out,
+                  "PASS" if timing_ok(total_out, 0.0, spec["release_max"]) else "FAIL"))
+    return steps
 
 
-def run_analog(cfg, requested, tol_pct, autocal=True, assumed_ratio=None):
+def run_analog_output(dev, points_kv, tol_pct, channel=1):
+    """Each point judged on its own — an averaged figure hides a bad end."""
+    span = dev.analog_full_scale_ma - dev.analog_zero_ma
     steps = []
-    ratio = calibrate_volts_to_amps(cfg) if autocal else assumed_ratio
-    steps.append(("Volts-to-amps ratio",
-                  "measured live" if autocal else "from config (not measured)",
-                  "%.4f A/Vrms" % ratio, "PASS" if autocal else "CHECK"))
-
-    vpp = quantize_vpp(vpp_for_current(requested, ratio))
-    driven = (vpp / (2.0 * SQRT2)) * cfg.volts_to_amps
-    lo, hi = tolerance_window(requested, tol_pct)
-    steps.append(("Input current driven", "%g A (%.3f-%.3f)" % (requested, lo, hi),
-                  "%.3f A" % driven, "PASS" if within_tol(driven, requested, tol_pct) else "FAIL"))
-
-    out = driven * (1.0 + cfg.analog_output_gain_error)
-    err = abs(out - driven) / driven * 100.0
-    ok = err <= tol_pct
-    steps.append(("CH1 output error (pre-cal)", "<= %g %%" % tol_pct,
-                  "%.2f %%" % err, "PASS" if ok else "CHECK"))
-    if not ok:
-        corr = driven / out
-        err2 = abs(out * corr - driven) / driven * 100.0
-        steps.append(("CH1 auto-calibration", "apply correction, error <= tol",
-                      "factor %.4f -> %.2f %%" % (corr, err2),
-                      "PASS" if err2 <= tol_pct else "FAIL"))
+    for kv in points_kv:
+        ma = dev.analog_ma(kv)
+        back = (ma - dev.analog_zero_ma) / span * dev.analog_full_scale_kv
+        err = abs(back - kv) / kv * 100.0
+        steps.append(("CH%d at %g kV" % (channel, kv), "within %g %%" % tol_pct,
+                      "%.3f mA -> %.3f kV (%.3f %%)" % (ma, back, err),
+                      "PASS" if err <= tol_pct else "FAIL"))
     return steps
 
 
@@ -354,264 +473,1001 @@ def show(title, steps):
     print(title)
     print("-" * len(title))
     for i, (c, e, m, o) in enumerate(steps, 1):
-        print("%d. %-28s expected %-32s measured %-18s -> %s" % (i, c, e, m, o))
+        print("%d. %-38s expected %-26s measured %-34s -> %s" % (i, c, e, m, o))
     print("=> %s\n" % verdict(steps))
 </script>
 
 <script>
-  // ---------- tab switching ----------
-  const tabs = document.querySelectorAll('.tab');
-  tabs.forEach(t => t.addEventListener('click', () => {
-    tabs.forEach(x => x.classList.remove('active'));
-    t.classList.add('active');
-    document.getElementById('tab-js').classList.toggle('hidden', t.dataset.tab !== 'js');
-    document.getElementById('tab-py').classList.toggle('hidden', t.dataset.tab !== 'py');
-  }));
+"use strict";
+/* ==================== model (mirrors the Python above) ==================== */
 
-  // ---------- JS simulator (mirror of the Python math above) ----------
-  const SQRT2 = Math.SQRT2;
-  const TRIGGER_OVERDRIVE = 1.01;
-  const $ = id => document.getElementById(id);
-  const val = id => parseFloat($(id).value);
+/* ==================================================================== *
+ *  A mirror of hiltf/layer3_hal/simulation.py + layer2_engine/keywords.py.
+ *  Every number below is derived the way the framework derives it: levels
+ *  from a measured calibration, edges from rendered samples, and the three
+ *  timing intervals from two probes on one acquisition.
+ * ==================================================================== */
+const $ = id => document.getElementById(id);
+const val = id => parseFloat($(id).value);
+const SQRT2 = Math.SQRT2;
+const LINE_HZ = 50.0;
+const SAMPLE_RATE = 20000;          // display rate; the bench scope runs 50 kS/s
+const RELAY_HIGH_V = 3.3;
+const BELOW_WINDOW = 0.95;          // keywords._BELOW_WINDOW_FACTOR
+const ABOVE_WINDOW = 1.05;
 
-  // Adaptive precision. A fixed 1 decimal renders a 1.5 A window as "1.5-1.5",
-  // which looks broken and hides the whole point of the tolerance check.
-  function fmt(x){
-    if(!isFinite(x)) return '∞';
-    const a = Math.abs(x);
-    const d = a >= 100 ? 1 : a >= 10 ? 2 : a >= 1 ? 3 : 4;
-    return x.toFixed(d);
+const g = x => String(Number(x.toFixed(4)));
+function fmt(x){
+  if(!isFinite(x)) return '∞';
+  const a = Math.abs(x);
+  const d = a >= 100 ? 1 : a >= 10 ? 2 : a >= 1 ? 3 : 4;
+  return x.toFixed(d);
+}
+const ms = v => isFinite(v) ? `${v.toFixed(1)} ms` : 'no edge';
+
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const grass = rng => (rng() + rng() - 1);
+
+/* ---- waveform synthesis ------------------------------------------- */
+function sineBurst({n, dt, t0, tOn, tOff, freq, peak, noise, rng}){
+  const y = new Float32Array(n);
+  const w = 2 * Math.PI * freq / 1000;
+  for(let i=0;i<n;i++){
+    const t = t0 + i*dt;
+    y[i] = ((t >= tOn && t <= tOff) ? peak * Math.sin(w * (t - tOn)) : 0) + noise * grass(rng);
   }
-  // SCPI carries the level as text with finite resolution.
-  const quantizeVpp = vpp => Number(vpp.toFixed(6));
-  const vppForCurrent = (amps, ratio) => (amps / ratio) * 2 * SQRT2;
-  function toleranceWindow(t, tol){ const d = t*tol/100; return [t-d, t+d]; }
+  return y;
+}
 
-  function compute(){
-    const test = $('test').value;
-    const tol = val('tol'), trigger = val('trigger');
-    const ratioReal = val('v2aReal'), ratioAssumed = val('v2aAssumed');
-    const autocal = $('autocal').checked;
-    const ratioUsed = autocal ? ratioReal : ratioAssumed;
-
-    const steps = [];
-    let why = null;
-
-    if(!isFinite(ratioUsed) || ratioUsed <= 0){
-      steps.push(['Volts-to-amps ratio', '> 0 A/Vrms', `${fmt(ratioUsed)} A/Vrms`, 'FAIL']);
-      return {steps, edge:Infinity, fall:Infinity, gate:2000,
-              why:'A non-physical calibration ratio stops the run — better than computing a drive level from it.'};
+/** A digital line: low, asserted at its edge, low again at release. */
+function digitalLine({n, dt, t0, tRise, tFall, noise, rng}){
+  const TAU_UP = 0.05, TAU_DOWN = 0.4;
+  const y = new Float32Array(n);
+  for(let i=0;i<n;i++){
+    const t = t0 + i*dt;
+    let v = 0;
+    if(isFinite(tRise) && t >= tRise){
+      v = RELAY_HIGH_V * (1 - Math.exp(-(t - tRise)/TAU_UP));
+      if(isFinite(tFall) && t >= tFall) v *= Math.exp(-(t - tFall)/TAU_DOWN);
     }
+    y[i] = v + noise * grass(rng);
+  }
+  return y;
+}
 
-    steps.push(['Volts-to-amps ratio',
-                autocal ? 'measured live' : 'from config (not measured)',
-                `${fmt(ratioUsed)} A/Vrms`,
-                autocal ? 'PASS' : 'CHECK']);
+/** A line that starts asserted and opens once — the drop-out capture. */
+function releaseLine({n, dt, t0, tFall, noise, rng}){
+  const y = new Float32Array(n);
+  for(let i=0;i<n;i++){
+    const t = t0 + i*dt;
+    y[i] = (t < tFall ? RELAY_HIGH_V : RELAY_HIGH_V * Math.exp(-(t - tFall)/0.4)) + noise*grass(rng);
+  }
+  return y;
+}
 
-    if(!autocal && Math.abs(ratioReal - ratioAssumed) > 1e-9){
-      why = `The config says ${fmt(ratioAssumed)} A/Vrms but the bench is actually ${fmt(ratioReal)}. ` +
-            `The drive level was computed from the stale number, so every reading is off by the same ` +
-            `factor — which is exactly why the framework measures the ratio before every case instead ` +
-            `of trusting the file.`;
+function dcStep({n, dt, t0, tOn, level, noise, rng}){
+  const y = new Float32Array(n);
+  for(let i=0;i<n;i++){
+    const t = t0 + i*dt;
+    y[i] = (t >= tOn ? level * (1 - Math.exp(-(t - tOn)/8)) : 0) + noise * grass(rng);
+  }
+  return y;
+}
+
+/* ---- measurements taken off the samples, exactly like the framework - */
+function edgesMs(y, dtMs, t0Ms){
+  let lo = Infinity, hi = -Infinity;
+  for(let i=0;i<y.length;i++){ if(y[i]<lo) lo=y[i]; if(y[i]>hi) hi=y[i]; }
+  if(hi - lo < 0.5) return [Infinity, Infinity];
+  const th = (lo + hi) / 2;
+  let r = -1;
+  for(let i=0;i<y.length;i++){ if(y[i] >= th){ r = i; break; } }
+  if(r < 0) return [Infinity, Infinity];
+  let f = -1;
+  for(let i=r;i<y.length;i++){ if(y[i] < th){ f = i; break; } }
+  return [t0Ms + r*dtMs, f < 0 ? Infinity : t0Ms + f*dtMs];
+}
+const risingEdgeMs = (y, dt, t0) => edgesMs(y, dt, t0)[0];
+
+/** A capture triggered on the stimulus going away: the only edge is the fall. */
+function fallingEdgeMs(y, dtMs, t0Ms){
+  let lo = Infinity, hi = -Infinity;
+  for(let i=0;i<y.length;i++){ if(y[i]<lo) lo=y[i]; if(y[i]>hi) hi=y[i]; }
+  if(hi - lo < 0.5) return Infinity;
+  const th = (lo + hi) / 2;
+  if(y[0] < th) return Infinity;
+  for(let i=0;i<y.length;i++){ if(y[i] < th) return t0Ms + i*dtMs; }
+  return Infinity;
+}
+
+/** RMS over a whole number of periods — a partial cycle biases it by ~1/(2N). */
+function rmsWholeCycles(y, dtMs, t0Ms, tOn, tOff, freqHz){
+  const period = 1000 / freqHz;
+  const cycles = Math.floor((tOff - tOn) / period);
+  if(cycles < 1) return 0;
+  const tB = tOn + cycles*period;
+  let s = 0, k = 0;
+  for(let i=0;i<y.length;i++){
+    const t = t0Ms + i*dtMs;
+    if(t < tOn || t >= tB) continue;
+    s += y[i]*y[i]; k++;
+  }
+  return k ? Math.sqrt(s/k) : 0;
+}
+
+/* ---- spec math ----------------------------------------------------- */
+function toleranceWindow(t, tol){ const d = t*tol/100; return [t-d, t+d]; }
+const withinTolerance = (m, t, tol) => { const [lo,hi]=toleranceWindow(t,tol); return m>=lo && m<=hi; };
+function timingOk(measured, minMs, maxMs){
+  if(!isFinite(measured) || measured <= 0) return false;
+  return measured >= (minMs ?? 0) && measured <= (maxMs ?? Infinity);
+}
+function detectWindow(minMs, maxMs){
+  const lo = minMs ?? 0, hi = maxMs ?? Infinity;
+  if(lo <= 0 && !isFinite(hi)) return 'unspecified';
+  if(lo <= 0) return `< ${g(hi)} ms`;
+  if(!isFinite(hi)) return `≥ ${g(lo)} ms`;
+  return `${g(lo)}–${g(hi)} ms`;
+}
+
+/* ==================================================================== *
+ *  Acquisition
+ * ==================================================================== */
+let seedCounter = 1;
+
+function acquire(){
+  const rng = mulberry32(0x9E3779B9 ^ (seedCounter++ * 2654435761));
+  const test = $('test').value;
+  const steps = [];
+  const cap = ({
+    line: lineCapture, slow: overcurrentCapture, fast: overcurrentCapture,
+    harmonic: harmonicCapture, analog: analogCapture,
+  })[test]({rng, steps, test});
+  cap.steps = steps;
+  return cap;
+}
+
+/* ---- the three intervals, from two probes of one acquisition ------- */
+function measureDetector({n, dt, t0, detectMs, relaySetMs, holdS, tripped, rng}){
+  const pin = digitalLine({n, dt, t0, tRise: tripped ? detectMs : Infinity,
+                           tFall: tripped ? detectMs + holdS*1000 : Infinity, noise:0.012, rng});
+  const contact = digitalLine({n, dt, t0, tRise: tripped ? detectMs + relaySetMs : Infinity,
+                               tFall: tripped ? detectMs + relaySetMs + holdS*1000 : Infinity,
+                               noise:0.012, rng});
+  const tPin = risingEdgeMs(pin, dt, t0);
+  const [tContact, tOpen] = edgesMs(contact, dt, t0);
+  const setMs = (isFinite(tPin) && isFinite(tContact)) ? tContact - tPin : Infinity;
+  const heldMs = !isFinite(tContact) ? 0 : (isFinite(tOpen) ? tOpen - tContact : (t0 + n*dt) - tContact);
+  return {pin, contact, detection: tPin, relaySet: setMs, total: tContact, hold: heldMs/1000};
+}
+
+function pushTiming(steps, t, spec){
+  steps.push(['Detection time (stimulus → digital pin)', detectWindow(spec.detectMin, spec.detectMax),
+              ms(t.detection), timingOk(t.detection, spec.detectMin, spec.detectMax) ? 'PASS':'FAIL']);
+  steps.push(['Relay set time (digital pin → contact)', `< ${g(spec.relaySetMax)} ms`,
+              ms(t.relaySet), timingOk(t.relaySet, 0, spec.relaySetMax) ? 'PASS':'FAIL']);
+  steps.push(['Total time (stimulus → contact)', 'detection + relay set',
+              ms(t.total), isFinite(t.total) ? 'PASS':'FAIL']);
+  steps.push(['Relay hold (latched past the stimulus)', `≥ ${g(spec.holdMin)} s`,
+              `${t.hold.toFixed(2)} s`, t.hold >= spec.holdMin ? 'PASS':'FAIL']);
+}
+
+/* ---- overcurrent: slow compares RMS, fast compares instantaneous --- */
+function overcurrentCapture({rng, steps, test}){
+  const fast = test === 'fast';
+  const quantity = fast ? 'peak' : 'rms';
+  const ratio = val('v2a');                       // measured live, not assumed
+  const trigger = val('trigger'), tol = val('tol');
+  const deviceTrigger = val('devTrigger');
+  const detectMs = val('devDetect'), relaySetMs = val('devRelaySet'), holdS = val('devHold');
+  const spec = {detectMin: fast ? 0 : val('detectMin'), detectMax: fast ? val('detectMax') : Infinity,
+                relaySetMax: val('relaySetMax'), holdMin: val('holdMin')};
+
+  steps.push(['Volts-to-amps ratio (measured)', '> 0 A/Vrms', `${fmt(ratio)} A/Vrms`, 'PASS']);
+
+  const [lo, hi] = toleranceWindow(trigger, tol);
+  const dt = 1000 / SAMPLE_RATE;
+
+  // the device's real trip point, in whichever quantity it compares
+  const trips = amps => amps >= deviceTrigger;
+
+  // 1) below the window: silence is the result
+  const below = lo * BELOW_WINDOW;
+  const quiet = !trips(below);
+  steps.push(['No trip below the trigger window',
+              `idle at ${fmt(below)} A (${quantity}); window opens at ${fmt(lo)} A`,
+              `${fmt(below)} A, relay ${quiet ? 'idle' : 'driven'}`, quiet ? 'PASS':'FAIL']);
+
+  // 2) above the window: it must trip, which pins the trip point inside it
+  const above = hi * ABOVE_WINDOW;
+  const tripsAbove = trips(above);
+  steps.push(['Trip above the trigger window',
+              `trip at ${fmt(above)} A (${quantity}); window closes at ${fmt(hi)} A`,
+              `${fmt(above)} A, relay ${tripsAbove ? 'driven' : 'idle'}`, tripsAbove ? 'PASS':'FAIL']);
+
+  // 3) time it well past the threshold, where the timing is the device's own
+  const driveA = val('driveA');
+  const peakA = quantity === 'peak' ? driveA : driveA * SQRT2;
+  const gate = (isFinite(spec.detectMax) ? spec.detectMax : spec.detectMin * 2)
+             + spec.holdMin*1000 + 500;
+  const t0 = -0.08 * gate, tEnd = gate * 1.08;
+  const n = Math.round((tEnd - t0)/dt) + 1;
+  const current = sineBurst({n, dt, t0, tOn:0, tOff:gate, freq:LINE_HZ, peak:peakA,
+                             noise:Math.abs(peakA)*0.004, rng});
+  const measuredRms = rmsWholeCycles(current, dt, t0, 0, gate, LINE_HZ);
+  const observed = quantity === 'peak' ? measuredRms*SQRT2 : measuredRms;
+
+  // A fast detector compares the instantaneous value, so it cannot answer
+  // before the sine physically reaches the threshold. That delay belongs to
+  // the stimulus, which is why an AC measurement of it always reads high.
+  const phaseMs = (fast && peakA > deviceTrigger)
+    ? Math.asin(deviceTrigger/peakA) / (2*Math.PI*LINE_HZ) * 1000 : 0;
+  const effectiveDetect = detectMs + phaseMs;
+
+  steps.push(['Stimulus for the timing measurement', `${g(driveA)} A (${quantity})`,
+              `${fmt(observed)} A`, 'PASS']);
+
+  const t = measureDetector({n, dt, t0, detectMs: effectiveDetect, relaySetMs, holdS,
+                             tripped: trips(observed), rng});
+  pushTiming(steps, t, spec);
+
+  let why = null;
+  if(!trips(observed))
+    why = `The stimulus settled at ${fmt(observed)} A (${quantity}), below the device's ` +
+          `${fmt(deviceTrigger)} A trip point, so nothing was detected. The capture still ran to ` +
+          `full length — an absent edge is a measurement, not an error.`;
+  else if(!timingOk(t.detection, spec.detectMin, spec.detectMax))
+    why = fast
+      ? `The instantaneous detector answered in ${t.detection.toFixed(2)} ms against a ` +
+        `${g(spec.detectMax)} ms limit. ${phaseMs > 0 ? `${phaseMs.toFixed(2)} ms of that is the sine ` +
+        `climbing from its zero crossing to the threshold — a property of the stimulus, not the ` +
+        `device, which is why an instantaneous limit is honestly verified with DC.` : ''}`
+      : `The relay tripped at ${t.detection.toFixed(0)} ms, and the spec says it must not trip ` +
+        `before ${g(spec.detectMin)} ms. This limit is a floor, not a ceiling: a slow protection ` +
+        `integrates deliberately so that inrush does not look like a fault. Tripping early is the ` +
+        `failure — and it is the one a single "must be under N ms" check cannot express.`;
+  else if(!timingOk(t.relaySet, 0, spec.relaySetMax))
+    why = `Detection was fine at ${ms(t.detection)}, but the contact took ${ms(t.relaySet)} to ` +
+          `follow the digital pin against a ${g(spec.relaySetMax)} ms limit. One probe on the relay ` +
+          `would have reported ${ms(t.total)} total and called it a pass — the overrun only shows ` +
+          `because the pin and the contact are measured separately.`;
+  else if(t.hold < spec.holdMin)
+    why = `The relay released after ${t.hold.toFixed(2)} s, short of ${g(spec.holdMin)} s. This is ` +
+          `the width between the contact's own edges, not the device's claim about itself.`;
+
+  const yPk = Math.max(peakA, hi*(quantity==='peak'?1:SQRT2)) * 1.28;
+  const xLim = [t0/1000, tEnd/1000];
+  const specPeak = quantity === 'peak' ? 1 : SQRT2;
+
+  return {
+    why,
+    title: (fast ? 'Fast overcurrent — instantaneous trigger' : 'Slow overcurrent — RMS trigger')
+           + '   — simulated bench',
+    xlabel: 'Time since stimulus (s)', nSamples: n, dt,
+    tiles: [
+      {ylabel:'Injected current (A)', xLim, yLim:[-yPk, yPk],
+       bands:[{y0:lo*specPeak, y1:hi*specPeak, color:'rgba(119,172,48,.16)'},
+              {y0:-hi*specPeak, y1:-lo*specPeak, color:'rgba(119,172,48,.16)'}],
+       series:[{name:'stimulus', color:'#0072bd', width:1.1, y:current, t0, dt}],
+       annot:[{text:`${quantity} = ${fmt(observed)} A   (trigger ${g(trigger)} ±${g(tol)} %)`,
+               x:0.014, y:0.12, align:'left'},
+              {text:'shaded: trigger window', x:0.982, y:0.12, align:'right', soft:true}]},
+      {ylabel:'DUT digital lines (V)', xLim, xlabel:true, yLim:[-0.3, 3.8], legend:true,
+       series:[{name:'digital pin (the decision)', color:'#d95319', width:1.6, y:t.pin, t0, dt},
+               {name:'relay contact (the action)', color:'#77ac30', width:1.6, dash:[6,4],
+                y:t.contact, t0, dt}],
+       vlines:[
+         isFinite(spec.detectMax) && spec.detectMax/1000 <= xLim[1]
+           ? {x:spec.detectMax/1000, color:'#a2142f', dash:[7,4], width:1.3,
+              label:`ceiling ${g(spec.detectMax)} ms`, at:'top'} : null,
+         spec.detectMin > 0 && spec.detectMin/1000 <= xLim[1]
+           ? {x:spec.detectMin/1000, color:'#a2142f', dash:[7,4], width:1.3,
+              label:`floor ${g(spec.detectMin)} ms — must not trip before this`, at:'top'} : null,
+         isFinite(t.detection) ? {x:t.detection/1000, color:'#333', dash:[3,3], width:1,
+                                  label:`t_detect = ${ms(t.detection)}`, at:'bottom'} : null,
+       ].filter(Boolean),
+       span: isFinite(t.total) ? {x0:t.total/1000,
+                                  x1:(t.total + t.hold*1000)/1000, y:1.9,
+                                  label:`hold = ${t.hold.toFixed(2)} s`} : null},
+      {ylabel:'DUT digital lines (V)', xUnit:'ms', xlabel:true, legend:true,
+       title:`Detail — the contact chasing the pin (relay set = ${ms(t.relaySet)})`,
+       xLim: isFinite(t.detection) ? [t.detection - 1.5, t.detection + Math.max(6, t.relaySet*2)]
+                                   : [0, 10],
+       yLim:[-0.3, 3.8],
+       series:[{name:'digital pin', color:'#d95319', width:1.6, y:t.pin, t0, dt},
+               {name:'relay contact', color:'#77ac30', width:1.6, dash:[6,4], y:t.contact, t0, dt}],
+       span: isFinite(t.relaySet) ? {x0:t.detection, x1:t.total, y:1.9,
+                                     label:`${ms(t.relaySet)}`} : null},
+    ],
+  };
+}
+
+/* ---- harmonic: AC content riding on a DC line ---------------------- */
+function harmonicCapture({rng, steps}){
+  const ratio = val('v2a');
+  const trigger = val('trigger'), tol = val('tol');
+  const deviceTrigger = val('devTrigger');
+  const detectMs = val('devDetect'), relaySetMs = val('devRelaySet'), holdS = val('devHold');
+  const lineKv = val('lineKv');
+  const spec = {detectMin: 0, detectMax: val('detectMax'),
+                relaySetMax: val('relaySetMax'), holdMin: val('holdMin')};
+
+  steps.push(['Volts-to-amps ratio (measured)', '> 0 A/Vrms', `${fmt(ratio)} A/Vrms`, 'PASS']);
+  steps.push(['Line held at DC', 'a DC line, so any AC content is contamination',
+              `${fmt(lineKv)} kV DC`, lineKv > 0 ? 'PASS' : 'FAIL']);
+
+  const [lo, hi] = toleranceWindow(trigger, tol);
+  const below = lo * BELOW_WINDOW, above = hi * ABOVE_WINDOW;
+  const quiet = below < deviceTrigger, tripsAbove = above >= deviceTrigger;
+  steps.push(['No trip below the trigger window', `idle at ${fmt(below)} A`,
+              `${fmt(below)} A, relay ${quiet?'idle':'driven'}`, quiet ? 'PASS':'FAIL']);
+  steps.push([`Trip above the trigger window (${g(LINE_HZ)} Hz)`, `trip at ${fmt(above)} A`,
+              `${fmt(above)} A, relay ${tripsAbove?'driven':'idle'}`, tripsAbove ? 'PASS':'FAIL']);
+
+  const driveA = val('driveA');
+  const dt = 1000 / SAMPLE_RATE;
+  const gate = spec.detectMax + spec.holdMin*1000 + 500;
+  const t0 = -0.08*gate, tEnd = gate*1.08;
+  const n = Math.round((tEnd - t0)/dt) + 1;
+  const peakA = driveA * SQRT2;
+  const current = sineBurst({n, dt, t0, tOn:0, tOff:gate, freq:LINE_HZ, peak:peakA,
+                             noise:Math.abs(peakA)*0.004, rng});
+  const measured = rmsWholeCycles(current, dt, t0, 0, gate, LINE_HZ);
+  const line = dcStep({n, dt, t0, tOn:t0*0.55, level:lineKv, noise:lineKv*0.002, rng});
+
+  const t = measureDetector({n, dt, t0, detectMs, relaySetMs, holdS,
+                             tripped: measured >= deviceTrigger, rng});
+  pushTiming(steps, t, spec);
+
+  const why = measured >= deviceTrigger ? null
+    : `${fmt(measured)} A of alternating current on the DC line is below the device's ` +
+      `${fmt(deviceTrigger)} A threshold, so nothing tripped.`;
+
+  const yPk = Math.max(peakA, hi*SQRT2) * 1.28;
+  const xLim = [t0/1000, tEnd/1000];
+  return {
+    why, title:'Harmonic detection — AC content on a DC line   — simulated bench',
+    xlabel:'Time since stimulus (s)', nSamples:n, dt,
+    tiles:[
+      {ylabel:'Line voltage (kV)', xLim, yLim:[-0.2*lineKv, lineKv*1.35],
+       series:[{name:'line', color:'#7e2f8e', width:1.4, y:line, t0, dt}],
+       annot:[{text:`DC line at ${fmt(lineKv)} kV — every ampere of AC below is contamination`,
+               x:0.014, y:0.16, align:'left'}]},
+      {ylabel:'AC content (A)', xLim, yLim:[-yPk, yPk],
+       bands:[{y0:lo*SQRT2, y1:hi*SQRT2, color:'rgba(119,172,48,.16)'},
+              {y0:-hi*SQRT2, y1:-lo*SQRT2, color:'rgba(119,172,48,.16)'}],
+       series:[{name:'injected', color:'#0072bd', width:1.1, y:current, t0, dt}],
+       annot:[{text:`I_rms = ${fmt(measured)} A   (trigger ${g(trigger)} ±${g(tol)} %)`,
+               x:0.014, y:0.12, align:'left'}]},
+      {ylabel:'DUT digital lines (V)', xLim, xlabel:true, yLim:[-0.3, 3.8], legend:true,
+       series:[{name:'digital pin', color:'#d95319', width:1.6, y:t.pin, t0, dt},
+               {name:'relay contact', color:'#77ac30', width:1.6, dash:[6,4], y:t.contact, t0, dt}],
+       vlines:[spec.detectMax/1000 <= xLim[1]
+         ? {x:spec.detectMax/1000, color:'#a2142f', dash:[7,4], width:1.3,
+            label:`ceiling ${g(spec.detectMax)} ms`, at:'top'} : null,
+         isFinite(t.detection) ? {x:t.detection/1000, color:'#333', dash:[3,3], width:1,
+                                  label:`t_detect = ${ms(t.detection)}`, at:'bottom'} : null,
+       ].filter(Boolean),
+       span: isFinite(t.total) ? {x0:t.total/1000, x1:(t.total+t.hold*1000)/1000, y:1.9,
+                                  label:`hold = ${t.hold.toFixed(2)} s`} : null},
+    ],
+  };
+}
+
+/* ---- line detection: thresholds, hysteresis, ride-through, timing --- */
+function lineCapture({rng, steps}){
+  const kvRatio = val('v2kv');
+  const inLow = val('inLow'), outLow = val('outLow');
+  const devIn = val('devInKv'), devOut = val('devOutKv');
+  const tol = val('tol'), nominal = val('lineKv');
+  const inMs = val('devDetect'), relaySetMs = val('devRelaySet'), outMs = val('devOutMs');
+  const holeMs = val('holeMs'), rideMs = val('devRideMs');
+  const spec = {detectMax: val('detectMax'), relaySetMax: val('relaySetMax'),
+                releaseMax: val('releaseMax')};
+
+  steps.push(['Volts-to-kilovolts ratio (measured)', '> 0 kV/V', `${fmt(kvRatio)} kV/V`, 'PASS']);
+  steps.push(['No line declared well below pick-up', `idle at ${fmt(inLow*0.5)} kV`,
+              `${fmt(inLow*0.5)} kV, relay idle`, 'PASS']);
+
+  // sweeping up until the device reacts is how a bench finds a threshold
+  steps.push(['Pick-up threshold', `${g(inLow)} kV ± ${g(tol)} %`, `${fmt(devIn)} kV`,
+              withinTolerance(devIn, inLow, tol) ? 'PASS' : 'FAIL']);
+
+  const between = (devOut + devIn) / 2;
+  const holds = between >= devOut;
+  steps.push(['Holds below pick-up (hysteresis)',
+              `still declared at ${fmt(between)} kV, between drop-out and pick-up`,
+              `relay ${holds ? 'driven' : 'idle'}`, holds ? 'PASS' : 'FAIL']);
+  steps.push(['Drop-out threshold', `${g(outLow)} kV ± ${g(tol)} %, below pick-up`,
+              `${fmt(devOut)} kV`,
+              (withinTolerance(devOut, outLow, tol) && devOut < devIn) ? 'PASS' : 'FAIL']);
+
+  const dt = 1000 / SAMPLE_RATE;
+  const gate = spec.detectMax + 500;
+  const t0 = -0.08*gate, tEnd = gate*1.15;
+  const n = Math.round((tEnd - t0)/dt) + 1;
+  const lineTrace = dcStep({n, dt, t0, tOn:0, level:nominal, noise:nominal*0.002, rng});
+  const pin = digitalLine({n, dt, t0, tRise:inMs, tFall:Infinity, noise:0.012, rng});
+  const contact = digitalLine({n, dt, t0, tRise:inMs + relaySetMs, tFall:Infinity, noise:0.012, rng});
+  const tPin = risingEdgeMs(pin, dt, t0), tContact = risingEdgeMs(contact, dt, t0);
+  const setMs = (isFinite(tPin) && isFinite(tContact)) ? tContact - tPin : Infinity;
+
+  steps.push(['Line-in time (stimulus → contact)', `< ${g(spec.detectMax)} ms`, ms(tContact),
+              timingOk(tPin, 0, spec.detectMax) ? 'PASS' : 'FAIL']);
+  steps.push(['Relay set time (digital pin → contact)', `< ${g(spec.relaySetMax)} ms`, ms(setMs),
+              timingOk(setMs, 0, spec.relaySetMax) ? 'PASS' : 'FAIL']);
+
+  const rides = holeMs <= rideMs;
+  steps.push(['Rides through a short supply hole',
+              `still declared after a ${g(holeMs)} ms interruption`,
+              `relay ${rides ? 'driven' : 'idle'}`, rides ? 'PASS' : 'FAIL']);
+
+  // the drop-out is its own acquisition, triggered on the supply going away
+  const rGate = spec.releaseMax * 2;
+  const rn = Math.round(rGate/dt) + 1;
+  const release = releaseLine({n:rn, dt, t0:0, tFall:outMs + relaySetMs, noise:0.012, rng});
+  const releasedMs = fallingEdgeMs(release, dt, 0);
+  steps.push(['Line-out time (supply removed → contact opens)', `< ${g(spec.releaseMax)} ms`,
+              ms(releasedMs), timingOk(releasedMs, 0, spec.releaseMax) ? 'PASS' : 'FAIL']);
+
+  let why = null;
+  if(!holds)
+    why = `Drop-out sits at ${fmt(devOut)} kV and pick-up at ${fmt(devIn)} kV, so there is no gap ` +
+          `between them. A supply resting near the limit then crosses both thresholds together and ` +
+          `the contact chatters. Hysteresis is the whole point of specifying two numbers.`;
+  else if(!rides)
+    why = `A ${g(holeMs)} ms interruption dropped the line, but the device is specified to ride ` +
+          `through anything up to ${g(rideMs)} ms. Note this can only be tested by an interruption ` +
+          `that carries its own duration — switching off and on again throws that number away.`;
+
+  const xLim = [t0/1000, tEnd/1000];
+  return {
+    why, title:'Line detection — pick-up, hysteresis and drop-out   — simulated bench',
+    xlabel:'Time since supply applied (s)', nSamples:n, dt,
+    tiles:[
+      {ylabel:'Line voltage (kV)', xLim, yLim:[-0.2*nominal, nominal*1.4],
+       bands:[{y0:devOut, y1:devIn, color:'rgba(217,83,25,.13)'}],
+       hlines:[{y:devIn, color:'#a2142f', dash:[6,4], width:1.2},
+               {y:devOut, color:'#0072bd', dash:[6,4], width:1.2}],
+       series:[{name:'line', color:'#7e2f8e', width:1.4, y:lineTrace, t0, dt}],
+       annot:[{text:`pick-up ${fmt(devIn)} kV · drop-out ${fmt(devOut)} kV · shaded band = hysteresis`,
+               x:0.014, y:0.13, align:'left'}]},
+      {ylabel:'DUT digital lines (V)', xLim, xlabel:true, yLim:[-0.3, 3.8], legend:true,
+       series:[{name:'digital pin', color:'#d95319', width:1.6, y:pin, t0, dt},
+               {name:'relay contact', color:'#77ac30', width:1.6, dash:[6,4], y:contact, t0, dt}],
+       vlines:[spec.detectMax/1000 <= xLim[1]
+         ? {x:spec.detectMax/1000, color:'#a2142f', dash:[7,4], width:1.3,
+            label:`ceiling ${g(spec.detectMax)} ms`, at:'top'} : null,
+         isFinite(tContact) ? {x:tContact/1000, color:'#333', dash:[3,3], width:1,
+                               label:`line-in = ${ms(tContact)}`, at:'bottom'} : null,
+       ].filter(Boolean)},
+      {ylabel:'Relay contact (V)', xUnit:'ms', xlabel:true,
+       title:'Drop-out — a separate acquisition, triggered on the supply going away',
+       xLim:[0, rGate], yLim:[-0.3, 3.8],
+       series:[{name:'contact', color:'#77ac30', width:1.6, y:release, t0:0, dt}],
+       vlines:[{x:spec.releaseMax, color:'#a2142f', dash:[7,4], width:1.3,
+                label:`ceiling ${g(spec.releaseMax)} ms`, at:'top'},
+               isFinite(releasedMs) ? {x:releasedMs, color:'#333', dash:[3,3], width:1,
+                                       label:`line-out = ${ms(releasedMs)}`, at:'bottom'} : null,
+       ].filter(Boolean)},
+    ],
+  };
+}
+
+/* ---- analog output: a 4-20 mA current loop ------------------------- */
+function analogCapture({rng, steps}){
+  const kvRatio = val('v2kv');
+  const tol = val('tol');
+  const channel = Math.round(val('dutChannel'));
+  const fsKv = val('fsKv'), fsMa = val('fsMa'), zeroMa = val('zeroMa');
+  const gainErr = val('gainErr') / 100;
+  const span = fsMa - zeroMa;
+
+  steps.push(['Volts-to-kilovolts ratio (measured)', '> 0 kV/V', `${fmt(kvRatio)} kV/V`, 'PASS']);
+
+  const points = [0.8, 1.0, 1.2, 1.5, 1.8];
+  const applied = [], outMa = [], equivKv = [], errPct = [];
+  for(const kv of points){
+    const signal = (kv / fsKv) * span;
+    const ma = zeroMa + signal * (1 + gainErr);
+    const back = (ma - zeroMa) / span * fsKv;
+    const err = Math.abs(back - kv) / kv * 100;
+    applied.push(kv); outMa.push(ma); equivKv.push(back); errPct.push(err);
+    steps.push([`CH${channel} at ${g(kv)} kV`,
+                `within ${g(tol)} % of the applied line voltage`,
+                `${ma.toFixed(3)} mA → ${back.toFixed(3)} kV vs ${kv.toFixed(3)} kV ` +
+                `(${err.toFixed(3)} % error)`,
+                err <= tol ? 'PASS' : 'FAIL']);
+  }
+
+  const worst = Math.max(...errPct);
+  const why = worst <= tol ? null
+    : `The channel is out by up to ${worst.toFixed(2)} % against a ${g(tol)} % limit. Note that ` +
+      `every point is judged on its own: a single averaged accuracy figure would let an error at ` +
+      `one end of the span be cancelled by the other end, which is exactly the shape a gain error ` +
+      `and an offset error differ in.`;
+
+  const ideal = points.map(kv => zeroMa + (kv/fsKv)*span);
+  const mk = (x, y) => ({x, y});
+  return {
+    why, title:`Analog output CH${channel} — a ${g(zeroMa)}–${g(fsMa)} mA loop over 0–${g(fsKv)} kV`,
+    xlabel:'Applied line voltage (kV)', nSamples: points.length, dt: 0,
+    tiles:[
+      {ylabel:'Loop current (mA)', xUnit:'kv', xLim:[0.6, 2.0], yLim:[zeroMa+2, zeroMa+span*0.75],
+       points:[{name:'ideal', color:'#9a9a9a', line:true, data:points.map((kv,i)=>mk(kv, ideal[i]))},
+               {name:`measured (CH${channel})`, color:'#0072bd', marker:true,
+                data:points.map((kv,i)=>mk(kv, outMa[i]))}],
+       legend:true,
+       annot:[{text:`live zero ${g(zeroMa)} mA — a broken wire reads 0 mA, not "no signal"`,
+               x:0.014, y:0.13, align:'left'}]},
+      {ylabel:'Error (%)', xUnit:'kv', xlabel:true, xLim:[0.6, 2.0],
+       yLim:[-Math.max(tol, worst)*1.4, Math.max(tol, worst)*1.4],
+       bands:[{y0:-tol, y1:tol, color:'rgba(119,172,48,.16)'}],
+       points:[{name:'error at each point', color:'#d95319', marker:true, line:true,
+                data:points.map((kv,i)=>mk(kv, (equivKv[i]-kv)/kv*100))}],
+       annot:[{text:`shaded: ±${g(tol)} % tolerance · worst point ${worst.toFixed(3)} %`,
+               x:0.014, y:0.13, align:'left'}]},
+    ],
+  };
+}
+
+
+/* ==================== figure rendering ==================== */
+const AX = {left:96, right:22, top:34, bottom:46, gap:34};
+
+function tickStep(span, want){
+  const raw = span / want;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const nrm = raw / mag;
+  return (nrm <= 1 ? 1 : nrm <= 2 ? 2 : nrm <= 5 ? 5 : 10) * mag;
+}
+function snapLimits(lo, hi, want){
+  if(!(hi > lo)) return [lo - 1, lo + 1];
+  const step = tickStep(hi - lo, want);
+  return [Math.floor(lo/step + 1e-9)*step, Math.ceil(hi/step - 1e-9)*step];
+}
+function niceTicks(lo, hi, want){
+  const span = hi - lo;
+  if(!(span > 0)) return [lo];
+  const step = tickStep(span, want);
+  const out = [];
+  for(let v = Math.ceil(lo/step - 1e-9)*step; v <= hi + step*1e-9; v += step)
+    out.push(Math.abs(v) < step*1e-9 ? 0 : v);
+  return out;
+}
+function tickLabel(v, step){
+  const d = Math.max(0, Math.min(6, -Math.floor(Math.log10(Math.abs(step)))));
+  return v.toFixed(isFinite(d) ? d : 0);
+}
+function rgba(hex, a){
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n>>16 & 255},${n>>8 & 255},${n & 255},${a})`;
+}
+
+/** Per-pixel-column min/max, exactly how a scope paints a dense trace. */
+function columnise(s, xLim, w, xUnit){
+  const key = `${xLim[0]}|${xLim[1]}|${w}|${xUnit}`;
+  if(s._key === key) return s._cols;
+  const mn = new Float64Array(w).fill(Infinity);
+  const mx = new Float64Array(w).fill(-Infinity);
+  const k = (w - 1) / (xLim[1] - xLim[0]);
+  const scale = xUnit === 'ms' ? 1 : 1/1000;
+  for(let i=0;i<s.y.length;i++){
+    const x = (s.t0 + i*s.dt) * scale;
+    const c = Math.round((x - xLim[0]) * k);
+    if(c < 0 || c >= w) continue;
+    const v = s.y[i];
+    if(v < mn[c]) mn[c] = v;
+    if(v > mx[c]) mx[c] = v;
+  }
+  s._key = key; s._cols = {mn, mx};
+  return s._cols;
+}
+
+function drawFigure(fig, progress){
+  const cv = $('fig'), ctx = cv.getContext('2d');
+  const nT = fig.tiles.length;
+  const H = nT >= 3 ? 700 : 470;
+  if(cv.height !== H) cv.height = H;
+  const W = cv.width;
+
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,H);
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#111'; ctx.font = 'bold 13px "Helvetica Neue",Helvetica,Arial,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(fig.title, W/2, 15);
+
+  const gaps = fig.tiles.map((t, i) => i === 0 ? 0 : (t.title ? AX.gap + 26 : AX.gap));
+  const totalGap = gaps.reduce((a,b) => a+b, 0);
+  const tileH = (H - AX.top - AX.bottom - totalGap) / nT;
+  let y = AX.top;
+  fig.tiles.forEach((tile, i) => {
+    y += gaps[i];
+    drawTile(ctx, tile, {x:AX.left, w:W - AX.left - AX.right, y, h:tileH}, fig, progress);
+    y += tileH;
+  });
+}
+
+function drawTile(ctx, tile, ax, fig, progress){
+  const xLim = tile.xLim;
+  const yLim = tile.yTicks ? tile.yLim : snapLimits(tile.yLim[0], tile.yLim[1], 6);
+  const X = v => ax.x + (v - xLim[0]) / (xLim[1] - xLim[0]) * ax.w;
+  const Y = v => ax.y + ax.h - (v - yLim[0]) / (yLim[1] - yLim[0]) * ax.h;
+
+  ctx.fillStyle = '#fff'; ctx.fillRect(ax.x, ax.y, ax.w, ax.h);
+  (tile.bands || []).forEach(b => {
+    const y0 = Y(Math.max(b.y1, b.y0)), y1 = Y(Math.min(b.y1, b.y0));
+    ctx.fillStyle = b.color; ctx.fillRect(ax.x, y0, ax.w, y1 - y0);
+  });
+
+  const xt = niceTicks(xLim[0], xLim[1], 9);
+  const yt = tile.yTicks || niceTicks(yLim[0], yLim[1], 6);
+  const xStep = xt.length > 1 ? xt[1]-xt[0] : 1;
+  const yStep = yt.length > 1 ? yt[1]-yt[0] : 1;
+
+  ctx.save();
+  ctx.strokeStyle = '#c8c8c8'; ctx.lineWidth = 0.6; ctx.setLineDash([1,3]);
+  xt.forEach(v => { const x = X(v);
+    if(x < ax.x-0.5 || x > ax.x+ax.w+0.5) return;
+    ctx.beginPath(); ctx.moveTo(x, ax.y); ctx.lineTo(x, ax.y+ax.h); ctx.stroke(); });
+  yt.forEach(v => { const yy = Y(v);
+    ctx.beginPath(); ctx.moveTo(ax.x, yy); ctx.lineTo(ax.x+ax.w, yy); ctx.stroke(); });
+  ctx.restore();
+
+  if(yLim[0] < 0 && yLim[1] > 0){
+    ctx.strokeStyle = '#b0b0b0'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(ax.x, Y(0)); ctx.lineTo(ax.x+ax.w, Y(0)); ctx.stroke();
+  }
+  (tile.hlines || []).forEach(h => {
+    ctx.save();
+    ctx.strokeStyle = h.color; ctx.lineWidth = h.width || 1; ctx.setLineDash(h.dash || []);
+    ctx.beginPath(); ctx.moveTo(ax.x, Y(h.y)); ctx.lineTo(ax.x+ax.w, Y(h.y)); ctx.stroke();
+    ctx.restore();
+  });
+
+  const revealTo = Math.round(ax.w * Math.max(0, Math.min(1, progress)));
+  ctx.save();
+  ctx.beginPath(); ctx.rect(ax.x, ax.y, ax.w, ax.h); ctx.clip();
+
+  (tile.series || []).forEach(s => {
+    const cols = columnise(s, xLim, Math.round(ax.w), tile.xUnit || 's');
+    const last = Math.min(revealTo, cols.mn.length - 1);
+    let sum = 0, cnt = 0;
+    for(let c=0;c<=last;c++){
+      if(!isFinite(cols.mn[c])) continue;
+      sum += Y(cols.mn[c]) - Y(cols.mx[c]); cnt++;
     }
+    // Several cycles per pixel column is not a line any more — that is a burst
+    // envelope, and a real scope shades it rather than pretending otherwise.
+    const envelope = cnt > 0 && sum/cnt > 4;
+    ctx.strokeStyle = s.color; ctx.lineWidth = s.width || 1.2;
+    ctx.setLineDash(s.dash || []); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
 
-    if(test === 'analog'){
-      const vpp = quantizeVpp(vppForCurrent(trigger, ratioUsed));
-      const driven = (vpp / (2*SQRT2)) * ratioReal;
-      const [lo,hi] = toleranceWindow(trigger, tol);
-      steps.push(['Input current driven', `${fmt(trigger)}A (${fmt(lo)}-${fmt(hi)})`,
-                  `${fmt(driven)}A`, (driven>=lo && driven<=hi) ? 'PASS' : 'FAIL']);
-
-      const err = val('gainErr');
-      const ok = err <= tol;
-      steps.push(['CH1 output error (pre-cal)', `<= ${fmt(tol)}%`, `${err.toFixed(2)}%`, ok?'PASS':'CHECK']);
-      if(!ok){
-        const corr = 1/(1+err/100);
-        const err2 = Math.abs((1+err/100)*corr - 1)*100;
-        steps.push(['CH1 auto-calibration', 'error <= tol',
-                    `factor ${corr.toFixed(4)} → ${err2.toFixed(2)}%`, err2<=tol?'PASS':'FAIL']);
-        if(!why) why = `The device reproduces its input with a ${err}% gain error. That is out of ` +
-                       `tolerance, so it is reported as CHECK — not silently passed, not hard-failed — ` +
-                       `and the self-cal then computes a correction and re-verifies.`;
+    if(envelope){
+      const cs = [];
+      for(let c=0;c<=last;c++) if(isFinite(cols.mn[c])) cs.push(c);
+      if(cs.length){
+        ctx.beginPath();
+        ctx.moveTo(ax.x + cs[0], Y(cols.mx[cs[0]]));
+        for(const c of cs) ctx.lineTo(ax.x + c, Y(cols.mx[c]));
+        for(let i=cs.length-1;i>=0;i--) ctx.lineTo(ax.x + cs[i], Y(cols.mn[cs[i]]));
+        ctx.closePath();
+        ctx.fillStyle = rgba(s.color, .17); ctx.fill();
+        ctx.lineWidth = 1; ctx.stroke();
       }
-      return {steps, edge:Infinity, fall:Infinity, gate:2000, why};
+    } else {
+      ctx.beginPath();
+      let started = false;
+      for(let c=0;c<=last;c++){
+        if(!isFinite(cols.mn[c])) continue;
+        const x = ax.x + c, yTop = Y(cols.mx[c]), yBot = Y(cols.mn[c]);
+        if(!started){ ctx.moveTo(x, (yTop+yBot)/2); started = true; }
+        if(yBot - yTop < 1.2) ctx.lineTo(x, (yTop+yBot)/2);
+        else { ctx.lineTo(x, yTop); ctx.lineTo(x, yBot); }
+      }
+      ctx.stroke();
     }
+    ctx.setLineDash([]);
+  });
 
-    // ----- timed tests: one capture, two measurements -----
-    const detectMax = val('detectMax'), holdMin = val('holdMin');
-    const detectReal = val('detectReal'), holdReal = val('holdReal');
-
-    const vpp = quantizeVpp(vppForCurrent(trigger * TRIGGER_OVERDRIVE, ratioUsed));
-    const measured = (vpp / (2*SQRT2)) * ratioReal;
-    const [lo,hi] = toleranceWindow(trigger, tol);
-    steps.push(['Trigger level', `${fmt(trigger)}A (${fmt(lo)}-${fmt(hi)})`,
-                `${fmt(measured)}A`, (measured>=lo && measured<=hi) ? 'PASS' : 'FAIL']);
-
-    const gate = detectMax + holdMin*1000 + 500;      // capture_gate_ms()
-    const rise = detectReal <= gate ? detectReal : Infinity;
-    const fallAbs = rise + holdReal*1000;
-    const heldMs = isFinite(rise) ? Math.min(fallAbs, gate) - rise : 0;
-
-    steps.push(['Detection time (scope)', `<= ${fmt(detectMax)}ms`,
-                isFinite(rise)?`${rise.toFixed(1)}ms`:'no edge',
-                (isFinite(rise) && rise>0 && rise<=detectMax)?'PASS':'FAIL']);
-    steps.push(['Relay hold (scope)', `>= ${fmt(holdMin)}s`, `${(heldMs/1000).toFixed(2)}s`,
-                (heldMs/1000)>=holdMin?'PASS':'FAIL']);
-
-    if(!why && isFinite(rise) && rise > detectMax)
-      why = `The relay tripped at ${rise.toFixed(0)} ms but the spec allows ${detectMax} ms. ` +
-            `The edge is still on the trace — the capture window is deliberately wider than the ` +
-            `limit so a late trip is measured rather than simply missed.`;
-    if(!why && (heldMs/1000) < holdMin)
-      why = `The relay released after ${(heldMs/1000).toFixed(2)} s, short of the ${holdMin} s the ` +
-            `spec requires. Note this is measured as the width between the rising and falling edges ` +
-            `of one capture — not read back from the device's own claim.`;
-
-    return {steps, edge:rise, fall:fallAbs, gate, why};
-  }
-
-  function verdict(steps){
-    const o = new Set(steps.map(s=>s[3]));
-    return o.has('FAIL')?'FAIL':(o.has('CHECK')?'CHECK':'PASS');
-  }
-
-  function drawScope(edgeMs, fallMs, gateMs, detectMax){
-    const cv = $('scope'), ctx = cv.getContext('2d');
-    const W = cv.width, H = cv.height;
-    ctx.clearRect(0,0,W,H);
-    ctx.strokeStyle = '#1a2b45'; ctx.lineWidth = 1;
-    for(let i=0;i<=10;i++){ const x=i/10*W; ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
-    for(let i=0;i<=6;i++){ const y=i/6*H; ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
-
-    const span = gateMs;
-    const xOf = ms => Math.max(0, Math.min(W, (ms/span)*W));
-    const yLow = H*0.8, yHigh = H*0.25;
-
-    // the relay line: low -> high at the trip -> low again when it releases
-    ctx.strokeStyle = '#2ec7c0'; ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0,yLow);
-    if(isFinite(edgeMs) && edgeMs<=span){
-      ctx.lineTo(xOf(edgeMs),yLow); ctx.lineTo(xOf(edgeMs),yHigh);
-      const end = Math.min(fallMs, span);
-      ctx.lineTo(xOf(end),yHigh);
-      if(fallMs <= span){ ctx.lineTo(xOf(fallMs),yLow); ctx.lineTo(W,yLow); }
-    } else { ctx.lineTo(W,yLow); }
-    ctx.stroke();
-
-    // the spec's detection limit
-    if(detectMax <= span){
-      ctx.strokeStyle = '#ff5c73'; ctx.setLineDash([6,5]); ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.moveTo(xOf(detectMax),0); ctx.lineTo(xOf(detectMax),H); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle='#ff9db0'; ctx.font='12px monospace';
-      ctx.fillText(`detect limit ${detectMax}ms`, xOf(detectMax)+4, 16);
+  // discrete measurements: a handful of points, not a swept trace
+  (tile.points || []).forEach(p => {
+    const shown = Math.max(1, Math.round(p.data.length * Math.min(1, progress)));
+    const data = p.data.slice(0, shown);
+    ctx.strokeStyle = p.color; ctx.fillStyle = p.color; ctx.lineWidth = p.width || 1.4;
+    ctx.setLineDash(p.dash || []);
+    if(p.line && data.length > 1){
+      ctx.beginPath();
+      data.forEach((d, i) => i ? ctx.lineTo(X(d.x), Y(d.y)) : ctx.moveTo(X(d.x), Y(d.y)));
+      ctx.stroke();
     }
-
-    if(isFinite(edgeMs) && edgeMs<=span){
-      ctx.strokeStyle='#f4b740'; ctx.setLineDash([4,4]);
-      ctx.beginPath(); ctx.moveTo(xOf(edgeMs),0); ctx.lineTo(xOf(edgeMs),H); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle='#f4b740'; ctx.font='12px monospace';
-      ctx.fillText(`t = ${edgeMs.toFixed(0)}ms`, xOf(edgeMs)+4, H-8);
-
-      // the hold, drawn as what it actually is: the width of the pulse
-      const end = Math.min(fallMs, span);
-      const yH = yHigh - 14;
-      ctx.strokeStyle='#9fb0c8'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(xOf(edgeMs),yH); ctx.lineTo(xOf(end),yH); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(xOf(edgeMs),yH-4); ctx.lineTo(xOf(edgeMs),yH+4);
-      ctx.moveTo(xOf(end),yH-4); ctx.lineTo(xOf(end),yH+4); ctx.stroke();
-      ctx.fillStyle='#9fb0c8';
-      ctx.fillText(`hold ${((end-edgeMs)/1000).toFixed(2)}s`, xOf(edgeMs)+6, yH-6);
-    }
-    ctx.fillStyle='#9fb0c8'; ctx.font='12px monospace';
-    ctx.fillText('relay (0→3.3V)', 8, 16);
-  }
-
-  function render(){
-    const r = compute();
-    drawScope(r.edge, r.fall, r.gate, val('detectMax'));
-    const tb = $('report').querySelector('tbody'); tb.innerHTML='';
-    r.steps.forEach((s,i)=>{
-      tb.insertAdjacentHTML('beforeend',
-        `<tr><td>${i+1}</td><td>${s[0]}</td><td>${s[1]}</td><td>${s[2]}</td><td><span class="pill ${s[3]}">${s[3]}</span></td></tr>`);
+    ctx.setLineDash([]);
+    if(p.marker) data.forEach(d => {
+      ctx.beginPath(); ctx.arc(X(d.x), Y(d.y), 3.4, 0, 2*Math.PI); ctx.fill();
     });
-    const v = verdict(r.steps);
-    $('verdict').innerHTML = `Result: <span class="pill ${v}">${v}</span>`;
+  });
+  ctx.restore();
 
-    const why = $('why');
-    if(r.why){ why.textContent = r.why; why.classList.remove('hidden');
-               why.classList.toggle('ok', v === 'PASS'); }
-    else { why.classList.add('hidden'); }
-
-    // The button used to look dead whenever the inputs already matched the
-    // defaults, because the output was identical. Say when it last ran.
-    const t = new Date();
-    $('ranAt').textContent = 'last run ' + t.toTimeString().slice(0,8);
-  }
-
-  function applyTestDefaults(){
-    const test = $('test').value;
-    const analog = test === 'analog';
-    $('analogBox').classList.toggle('hidden', !analog);
-    $('timingBox').classList.toggle('hidden', analog);
-    if(test==='harmonic'){ $('trigger').value=1.5; $('tol').value=3; $('detectMax').value=2000;
-                           $('holdMin').value=3; $('detectReal').value=1130; $('holdReal').value=3.20; }
-    if(test==='overcurrent'){ $('trigger').value=200; $('tol').value=3; $('detectMax').value=2000;
-                              $('holdMin').value=3; $('detectReal').value=1200; $('holdReal').value=3.08; }
-    if(analog){ $('trigger').value=50; $('tol').value=1; }
-  }
-
-  $('test').addEventListener('change', ()=>{ applyTestDefaults(); render(); });
-  $('runJs').addEventListener('click', render);
-  ['v2aReal','v2aAssumed','trigger','tol','detectMax','holdMin','detectReal','holdReal','gainErr']
-    .forEach(id => $(id).addEventListener('input', render));
-  $('autocal').addEventListener('change', render);
-  render();
-
-  // ---------- Pyodide tab ----------
-  const enginePy = document.getElementById('engine-py').textContent;
-  const defaultCall = [
-    '# Edit these numbers, then run. This is the real engine, not a mirror of it.',
-    'cfg = SimConfig(volts_to_amps=10.0,',
-    '                overcurrent_trigger_a=200.0, overcurrent_detect_ms=1200.0, overcurrent_hold_s=3.08,',
-    '                harmonic_detect_ms=1130.0, harmonic_hold_s=3.20,',
-    '                analog_output_gain_error=0.03)',
-    '',
-    'show("Overcurrent (slow_ac)",',
-    '     run_overcurrent(cfg, trigger=200, tol_pct=3, detect_max_ms=2000, hold_min_s=3))',
-    '',
-    'show("Analog output (ch1_50a)", run_analog(cfg, requested=50, tol_pct=1))',
-    '',
-    '# The point of measuring the ratio instead of trusting the config:',
-    'bench = SimConfig(volts_to_amps=12.0)   # the bench actually reads 12 A/Vrms',
-    'show("Overcurrent, ratio ASSUMED to be 10",',
-    '     run_overcurrent(bench, trigger=200, tol_pct=3, detect_max_ms=2000, hold_min_s=3,',
-    '                     autocal=False, assumed_ratio=10.0))',
-  ].join('\n');
-  $('pyCode').value = defaultCall;
-
-  let pyodideReady = null;
-  async function bootAndRun(){
-    const status = $('pyStatus'), out = $('pyOut');
-    if(!pyodideReady){
-      status.textContent = 'Loading Pyodide runtime…';
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js';
-      document.head.appendChild(s);
-      await new Promise((res,rej)=>{ s.onload=res; s.onerror=()=>rej(new Error('Could not load Pyodide (offline?). The Interactive simulator tab works without it.')); });
-      pyodideReady = await loadPyodide();
-      status.textContent = 'Runtime ready.';
+  (tile.vlines || []).forEach(v => {
+    const x = X(v.x);
+    if(x < ax.x || x > ax.x + ax.w) return;
+    ctx.save();
+    ctx.strokeStyle = v.color; ctx.lineWidth = v.width || 1; ctx.setLineDash(v.dash || []);
+    ctx.beginPath(); ctx.moveTo(x, ax.y); ctx.lineTo(x, ax.y+ax.h); ctx.stroke();
+    ctx.restore();
+    if(v.label){
+      const top = v.at === 'top';
+      boxedText(ctx, v.label, x + 4, top ? ax.y + 12 : ax.y + ax.h - 12, 'left', v.color);
     }
-    try{
-      pyodideReady.runPython(enginePy);
-      pyodideReady.runPython('import io,sys; sys.stdout=io.StringIO()');
-      pyodideReady.runPython($('pyCode').value);
-      out.textContent = pyodideReady.runPython('sys.stdout.getvalue()');
-      status.textContent = 'Done — that was real CPython running in your browser.';
-    }catch(e){ out.textContent = String(e); status.textContent='Error.'; }
+  });
+
+  if(tile.span){
+    const x0 = Math.max(X(tile.span.x0), ax.x), x1 = Math.min(X(tile.span.x1), ax.x + ax.w);
+    const yy = Y(tile.span.y);
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(x0, yy); ctx.lineTo(x1, yy);
+    ctx.moveTo(x0, yy-5); ctx.lineTo(x0, yy+5);
+    ctx.moveTo(x1, yy-5); ctx.lineTo(x1, yy+5);
+    ctx.stroke();
+    boxedText(ctx, tile.span.label, (x0+x1)/2, yy - 11, 'center', '#111');
   }
-  $('runPy').addEventListener('click', ()=>bootAndRun().catch(e=>{ $('pyStatus').textContent = e.message; }));
+
+  (tile.annot || []).forEach(a => {
+    boxedText(ctx, a.text, ax.x + a.x*ax.w, ax.y + a.y*ax.h, a.align || 'left',
+              a.soft ? '#6b6b6b' : '#111');
+  });
+
+  if(tile.legend) drawLegend(ctx, tile, ax);
+
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.setLineDash([]);
+  ctx.strokeRect(ax.x + .5, ax.y + .5, ax.w - 1, ax.h - 1);
+  ctx.fillStyle = '#222'; ctx.font = '11px "Helvetica Neue",Helvetica,Arial,sans-serif';
+  ctx.textAlign = 'right';
+  yt.forEach(v => {
+    const yy = Y(v);
+    if(yy < ax.y - 1 || yy > ax.y + ax.h + 1) return;
+    ctx.beginPath(); ctx.moveTo(ax.x, yy); ctx.lineTo(ax.x + 5, yy); ctx.stroke();
+    ctx.fillText(tickLabel(v, yStep), ax.x - 7, yy);
+  });
+  ctx.textAlign = 'center';
+  xt.forEach(v => {
+    const x = X(v);
+    if(x < ax.x - 1 || x > ax.x + ax.w + 1) return;
+    ctx.beginPath(); ctx.moveTo(x, ax.y + ax.h); ctx.lineTo(x, ax.y + ax.h - 5); ctx.stroke();
+    ctx.fillText(tickLabel(v, xStep), x, ax.y + ax.h + 13);
+  });
+
+  ctx.save();
+  ctx.translate(26, ax.y + ax.h/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#111';
+  ctx.font = '11px "Helvetica Neue",Helvetica,Arial,sans-serif';
+  ctx.fillText(tile.ylabel, 0, 0);
+  ctx.restore();
+
+  if(tile.title){
+    ctx.textAlign = 'left'; ctx.fillStyle = '#333';
+    ctx.font = '11px "Helvetica Neue",Helvetica,Arial,sans-serif';
+    ctx.fillText(tile.title, ax.x, ax.y - 9);
+  }
+  if(tile.xlabel){
+    ctx.textAlign = 'center'; ctx.fillStyle = '#111';
+    ctx.font = '11px "Helvetica Neue",Helvetica,Arial,sans-serif';
+    let lbl = fig.xlabel;
+    if(tile.xUnit === 'ms') lbl = lbl.replace('(s)', '(ms)');
+    ctx.fillText(lbl, ax.x + ax.w/2, ax.y + ax.h + 30);
+  }
+}
+
+function boxedText(ctx, text, x, y, align, color){
+  ctx.font = '11px Menlo,Consolas,monospace';
+  const w = ctx.measureText(text).width, pad = 4;
+  let bx = x;
+  if(align === 'center') bx = x - w/2;
+  else if(align === 'right') bx = x - w;
+  ctx.fillStyle = 'rgba(255,255,255,.86)';
+  ctx.fillRect(bx - pad, y - 8, w + pad*2, 16);
+  ctx.strokeStyle = '#d0d0d0'; ctx.lineWidth = 0.6; ctx.setLineDash([]);
+  ctx.strokeRect(bx - pad + .5, y - 7.5, w + pad*2 - 1, 15);
+  ctx.fillStyle = color; ctx.textAlign = 'left';
+  ctx.fillText(text, bx, y);
+}
+
+function drawLegend(ctx, tile, ax){
+  ctx.font = '11px "Helvetica Neue",Helvetica,Arial,sans-serif';
+  const items = (tile.series || []).concat(tile.points || []);
+  if(items.length < 2) return;
+  const w = Math.max(...items.map(s => ctx.measureText(s.name).width)) + 46;
+  const h = items.length * 15 + 8;
+  const x = ax.x + ax.w - w - 8, y = ax.y + 8;
+  ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#999'; ctx.lineWidth = 0.8; ctx.setLineDash([]);
+  ctx.strokeRect(x + .5, y + .5, w - 1, h - 1);
+  items.forEach((s, i) => {
+    const ly = y + 12 + i*15;
+    ctx.strokeStyle = s.color; ctx.fillStyle = s.color;
+    ctx.lineWidth = s.width || 1.2; ctx.setLineDash(s.dash || []);
+    ctx.beginPath(); ctx.moveTo(x + 7, ly); ctx.lineTo(x + 33, ly); ctx.stroke();
+    ctx.setLineDash([]);
+    if(s.marker){ ctx.beginPath(); ctx.arc(x + 20, ly, 3.2, 0, 2*Math.PI); ctx.fill(); }
+    ctx.fillStyle = '#111'; ctx.textAlign = 'left'; ctx.fillText(s.name, x + 39, ly);
+  });
+}
+
+/* ==================== console behaviour ==================== */
+let animHandle = null;
+
+const DEFAULTS = {
+  line: {tol:3, detectMax:2000, relaySetMax:5, releaseMax:1000, inLow:1.0, outLow:0.95,
+         devInKv:1.0, devOutKv:0.95, devDetect:1070, devRelaySet:2, devOutMs:524,
+         devRideMs:400, holeMs:300, lineKv:1.5, v2kv:5},
+  slow: {tol:3, trigger:200, detectMin:1200, relaySetMax:5, holdMin:3,
+         devTrigger:200, driveA:300, devDetect:1215, devRelaySet:2, devHold:3.08, v2a:10},
+  fast: {tol:3, trigger:500, detectMax:5, relaySetMax:5, holdMin:3,
+         devTrigger:500, driveA:780, devDetect:0.9, devRelaySet:2, devHold:3.05, v2a:10},
+  harmonic: {tol:3, trigger:1.5, detectMax:2000, relaySetMax:5, holdMin:3, lineKv:1.5,
+             devTrigger:1.5, driveA:1.8, devDetect:1175, devRelaySet:2, devHold:3.20, v2a:10},
+  analog: {tol:1, dutChannel:1, fsKv:3, fsMa:20, zeroMa:4, gainErr:0.09, v2kv:5, devRelaySet:2,
+           devDetect:1215},
+};
+
+const TIPS = {
+  line: 'Try it: raise <b>Real drop-out (kV)</b> to 1.0 so it equals pick-up. The hysteresis check ' +
+        'fails — with no gap between the two thresholds, a supply resting near the limit chatters ' +
+        'the contact.',
+  slow: 'Try it: set <b>Real detect</b> to 900 ms. It still trips well inside two seconds, and the ' +
+        'case correctly fails: the limit is a <i>floor</i>, because a protection that fires on ' +
+        'inrush is a broken protection. A single "under N ms" check cannot express that.',
+  fast: 'Try it: lower <b>Drive for timing</b> towards 510 A. Detection stretches out — an ' +
+        'instantaneous detector cannot answer before the sine physically reaches the threshold, so ' +
+        'an AC measurement of this limit always reads high.',
+  harmonic: 'Try it: this detector only means anything while the line is DC. On an AC line the ' +
+        'fundamental <i>is</i> the line current and carries no information about distortion.',
+  analog: 'Try it: raise <b>Gain error</b> past the tolerance. Every point fails together, which is ' +
+        'the signature of a gain error — an offset error would fail the low points first.',
+};
+
+function applyDefaults(){
+  const test = $('test').value;
+  Object.entries(DEFAULTS[test]).forEach(([id, v]) => { if($(id)) $(id).value = v; });
+  document.querySelectorAll('[data-for]').forEach(el => {
+    el.classList.toggle('hidden', !el.dataset.for.split(' ').includes(test));
+  });
+  $('devDetectLabel').textContent = test === 'line' ? 'Real pick-up time (ms)' : 'Real detect (ms)';
+  $('tip').innerHTML = '<b>Try it:</b> ' + TIPS[test].replace(/^Try it: /, '');
+}
+
+function verdictOf(steps){
+  const o = new Set(steps.map(s => s[3]));
+  return o.has('FAIL') ? 'FAIL' : (o.has('CHECK') ? 'CHECK' : 'PASS');
+}
+
+function fillReport(cap){
+  const tb = $('report').querySelector('tbody');
+  tb.innerHTML = '';
+  cap.steps.forEach((s, i) => {
+    tb.insertAdjacentHTML('beforeend',
+      `<tr><td class="num">${i+1}</td><td>${s[0]}</td><td class="num">${s[1]}</td>` +
+      `<td class="num">${s[2]}</td><td><span class="tag ${s[3]}">${s[3]}</span></td></tr>`);
+  });
+  const v = verdictOf(cap.steps);
+  $('verdict').innerHTML = `Case result: <b class="tag ${v}">${v}</b>`;
+  const why = $('why');
+  if(cap.why){ why.textContent = cap.why; why.classList.remove('hidden'); }
+  else why.classList.add('hidden');
+}
+
+function runTest(){
+  if(animHandle) cancelAnimationFrame(animHandle);
+  const cap = acquire();
+  $('veil').classList.remove('on');
+  $('run').classList.remove('stale');
+  $('run').disabled = true;
+  fillReport(cap);
+
+  const T0 = performance.now(), DUR = 620;
+  const step = now => {
+    const p = Math.min(1, (now - T0) / DUR);
+    drawFigure(cap, p);
+    $('status').textContent = p < 1 ? `Acquiring… ${(p*100).toFixed(0)} %` : 'Acquisition complete.';
+    if(p < 1){ animHandle = requestAnimationFrame(step); }
+    else {
+      animHandle = null; $('run').disabled = false;
+      const stamp = new Date().toTimeString().slice(0,8);
+      $('acqinfo').textContent = cap.dt
+        ? `${cap.nSamples.toLocaleString('en-US')} pts @ ${(1/cap.dt).toFixed(0)} kS/s · ${stamp}`
+        : `${cap.nSamples} plan points · ${stamp}`;
+    }
+  };
+  animHandle = requestAnimationFrame(step);
+}
+
+function markStale(){
+  if($('run').disabled) return;
+  $('veil').classList.add('on');
+  $('run').classList.add('stale');
+  $('status').textContent = 'Parameters changed — press Run test.';
+}
+
+$('test').addEventListener('change', () => { applyDefaults(); runTest(); });
+$('run').addEventListener('click', runTest);
+$('reset').addEventListener('click', () => { applyDefaults(); runTest(); });
+document.querySelectorAll('input[type=number]').forEach(el => el.addEventListener('input', markStale));
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  $('tab-js').classList.toggle('hidden', t.dataset.tab !== 'js');
+  $('tab-py').classList.toggle('hidden', t.dataset.tab !== 'py');
+}));
+
+const wanted = new URLSearchParams(location.search).get('case');
+if(wanted && [...$('test').options].some(o => o.value === wanted)) $('test').value = wanted;
+applyDefaults();
+runTest();
+
+/* ==================== Pyodide tab ==================== */
+const enginePy = document.getElementById('engine-py').textContent;
+$('pyCode').value = [
+  '# The real device model. Edit it, then run.',
+  'dev = Device()',
+  '',
+  'show("Line detection",',
+  '     run_line_detection(dev, nominal_kv=1.5, tol_pct=3,',
+  '                        spec=dict(in_kv=1.0, out_kv=0.95, detect_max=2000,',
+  '                                  relay_set_max=5, release_max=1000)))',
+  '',
+  'slow = dict(detect_min=1200, detect_max=float("inf"), relay_set_max=5, hold_min=3)',
+  'show("Overcurrent, slow (RMS)",',
+  '     run_overcurrent(dev, trigger=200, tol_pct=3, drive_a=300, spec=slow))',
+  '',
+  'fast = dict(detect_min=0, detect_max=5, relay_set_max=5, hold_min=3)',
+  'show("Overcurrent, fast (instantaneous)",',
+  '     run_overcurrent(dev, trigger=500, tol_pct=3, drive_a=780, spec=fast, fast=True))',
+  '',
+  '# The correction the old single-limit check could not express: a slow',
+  '# protection that trips EARLY is broken, however comfortably it fits',
+  '# under a maximum.',
+  'eager = Device(overcurrent_detect_ms=900.0)',
+  'show("Overcurrent, slow, on a device that trips on inrush",',
+  '     run_overcurrent(eager, trigger=200, tol_pct=3, drive_a=300, spec=slow))',
+  '',
+  '# And the one a single probe on the relay cannot see at all:',
+  'sticky = Device(relay_set_ms=9.0)',
+  'show("Overcurrent, slow, with a slow contact",',
+  '     run_overcurrent(sticky, trigger=200, tol_pct=3, drive_a=300, spec=slow))',
+].join('\n');
+
+let pyodideReady = null;
+async function bootAndRun(){
+  const status = $('pyStatus'), out = $('pyOut');
+  if(!pyodideReady){
+    status.textContent = 'Loading Pyodide runtime…';
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js';
+    document.head.appendChild(s);
+    await new Promise((res, rej) => {
+      s.onload = res;
+      s.onerror = () => rej(new Error('Could not load Pyodide (offline?). The bench console works without it.'));
+    });
+    pyodideReady = await loadPyodide();
+    status.textContent = 'Runtime ready.';
+  }
+  try{
+    pyodideReady.runPython(enginePy);
+    pyodideReady.runPython('import io,sys; sys.stdout=io.StringIO()');
+    pyodideReady.runPython($('pyCode').value);
+    out.textContent = pyodideReady.runPython('sys.stdout.getvalue()');
+    status.textContent = 'Done — that was real CPython running in your browser.';
+  }catch(e){ out.textContent = String(e); status.textContent = 'Error.'; }
+}
+$('runPy').addEventListener('click', () => bootAndRun().catch(e => { $('pyStatus').textContent = e.message; }));
 </script>
 </body>
 </html>

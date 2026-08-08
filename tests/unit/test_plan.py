@@ -22,10 +22,34 @@ def test_within_tolerance(measured, expected):
     assert within_tolerance(measured, 200.0, 3.0) is expected
 
 
-def test_timing_ok():
-    assert timing_ok(1200.0, 2000.0) is True
-    assert timing_ok(2500.0, 2000.0) is False
-    assert timing_ok(0.0, 2000.0) is False  # no edge found
+def test_timing_ok_ceiling():
+    assert timing_ok(1200.0, max_ms=2000.0) is True
+    assert timing_ok(2500.0, max_ms=2000.0) is False
+    assert timing_ok(0.0, max_ms=2000.0) is False  # no edge found
+
+
+def test_timing_ok_floor():
+    """A slow protection states a minimum: tripping early is the failure.
+
+    This is the case the old single-limit check could not express, so an
+    inrush-tripping device passed a test written to catch exactly that.
+    """
+    assert timing_ok(1215.0, min_ms=1200.0) is True
+    assert timing_ok(900.0, min_ms=1200.0) is False
+    assert timing_ok(60_000.0, min_ms=1200.0) is True  # no ceiling was stated
+
+
+def test_timing_ok_window():
+    assert timing_ok(3.1, min_ms=1.0, max_ms=5.0) is True
+    assert timing_ok(0.5, min_ms=1.0, max_ms=5.0) is False
+    assert timing_ok(5.4, min_ms=1.0, max_ms=5.0) is False
+
+
+def test_timing_ok_rejects_a_missing_edge():
+    """``inf`` means "no edge was ever seen" — not "arrived very quickly"."""
+    assert timing_ok(float("inf"), min_ms=1200.0) is False
+    assert timing_ok(float("inf"), max_ms=2000.0) is False
+    assert timing_ok(float("nan"), max_ms=2000.0) is False
 
 
 def test_hold_ok():

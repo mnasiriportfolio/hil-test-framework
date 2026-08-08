@@ -1,7 +1,11 @@
 *** Settings ***
-Documentation     Analog-output correctness — drive a known input, read the DUT's
-...               reproduced analog output, and if it is out of tolerance run an
-...               automated self-calibration and re-verify.
+Documentation     Analog-output correctness — apply a known line voltage, read the
+...               milliamps the DUT puts on its current loop, convert back through the
+...               loop's stated scaling and compare kilovolts with kilovolts.
+...
+...               Every plan point gets its own row and its own outcome. A single
+...               averaged accuracy figure would let a channel that is wrong at one
+...               end of its span hide behind being right at the other.
 ...
 ...               Transport-agnostic: change ${CONFIG} to run the identical suite
 ...               over sockets, PyVISA or the containerised bench.

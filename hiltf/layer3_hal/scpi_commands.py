@@ -109,9 +109,18 @@ def get_output(channel: int) -> str:
     return f"OUTP{channel:d}?"
 
 
+def interrupt_output(channel: int, duration_ms: float) -> str:
+    """Drop an output for a stated number of milliseconds, then restore it."""
+    return f"OUTP{channel:d}:INT {duration_ms:.3f}"
+
+
 # --- multimeter -----------------------------------------------------------
 def measure_dc_voltage() -> str:
     return "MEAS:VOLT:DC?"
+
+
+def measure_line_kv() -> str:
+    return "MEAS:VOLT:LINE?"
 
 
 def measure_ac_current() -> str:
@@ -124,7 +133,13 @@ def measure_harmonic_current() -> str:
 
 # --- oscilloscope ---------------------------------------------------------
 def digitize_relay(relay: str, gate_ms: float) -> str:
-    """Arm and acquire the named DUT relay line for ``gate_ms`` milliseconds."""
+    """Arm and acquire a named DUT line for ``gate_ms`` milliseconds.
+
+    The name is any trace the bench can render — the injected stimulus, a
+    detector's digital output pin, or the relay contact it drives. Detection
+    time and relay set time are different edges on different lines, so the
+    verb takes a name rather than assuming there is only one thing to look at.
+    """
     return f'DIG:REL "{relay}",{gate_ms:.3f}'
 
 

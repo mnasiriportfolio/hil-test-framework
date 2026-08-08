@@ -70,8 +70,10 @@ class ScpiInterpreter:
             (re.compile(r"^SOUR(\d+):FREQ\?$"), self._get_frequency),
             (re.compile(r"^SOUR(\d+):HARM:CLE$"), self._clear_harmonics),
             (re.compile(rf"^SOUR(\d+):HARM(\d+):VOLT ({_NUM})$"), self._set_harmonic),
+            (re.compile(rf"^OUTP(\d+):INT ({_NUM})$"), self._interrupt_output),
             (re.compile(r"^OUTP(\d+) (ON|OFF|1|0)$"), self._set_output),
             (re.compile(r"^OUTP(\d+)\?$"), self._get_output),
+            (re.compile(r"^MEAS:VOLT:LINE\?$"), self._meas_line_kv),
             (re.compile(r"^MEAS:VOLT:DC\?$"), self._meas_dc_voltage),
             (re.compile(r"^MEAS:CURR:AC:HARM\?$"), self._meas_harmonic_current),
             (re.compile(r"^MEAS:CURR:AC\?$"), self._meas_ac_current),
@@ -185,9 +187,16 @@ class ScpiInterpreter:
     def _get_output(self, channel: str) -> bytes:
         return self._text("1" if self.bench.output_state(int(channel)) else "0")
 
+    def _interrupt_output(self, channel: str, duration_ms: str) -> None:
+        self.bench.interrupt_output(int(channel), float(duration_ms))
+        return None
+
     # --- measurements -----------------------------------------------------
     def _meas_dc_voltage(self) -> bytes:
         return self._number(self.bench.voltage_dc_v())
+
+    def _meas_line_kv(self) -> bytes:
+        return self._number(self.bench.line_kv())
 
     def _meas_ac_current(self) -> bytes:
         return self._number(self.bench.current_rms_a())
@@ -196,10 +205,10 @@ class ScpiInterpreter:
         return self._number(self.bench.harmonic_current_rms_a())
 
     # --- acquisition ------------------------------------------------------
-    def _digitize(self, relay: str, gate_ms: str) -> None:
-        """Acquire the relay line and hold it for the WAV: queries."""
-        self._trace_dt, self._trace = self.bench.relay_trace(
-            relay, float(gate_ms), self.sample_rate_hz
+    def _digitize(self, line: str, gate_ms: str) -> None:
+        """Acquire one named line and hold it for the WAV: queries."""
+        self._trace_dt, self._trace = self.bench.line_trace(
+            line, float(gate_ms), self.sample_rate_hz
         )
         return None
 

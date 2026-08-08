@@ -21,11 +21,13 @@ from hiltf.layer2_engine import (
     load_plan,
     run_analog_output_case,
     run_harmonic_case,
+    run_line_detection_case,
     run_overcurrent_case,
 )
 
 _ROOT = Path(__file__).resolve().parents[2]
 _RUNNERS = {
+    "line_detection": run_line_detection_case,
     "overcurrent": run_overcurrent_case,
     "harmonic": run_harmonic_case,
     "analog_output": run_analog_output_case,
@@ -72,6 +74,8 @@ class HiltfLibrary:
     @keyword
     def run_all_cases(self, kind: str, plan: str) -> None:
         controller = self._require_controller()
+        if kind not in _RUNNERS:
+            raise AssertionError(f"unknown case kind {kind!r}; known: {sorted(_RUNNERS)}")
         runner = _RUNNERS[kind]
         for sc in enabled_scenarios(load_plan(_ROOT / plan)):
             runner(controller, sc, self.bus)

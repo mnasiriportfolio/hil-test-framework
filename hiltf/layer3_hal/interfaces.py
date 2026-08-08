@@ -66,6 +66,17 @@ class SignalGenerator(Instrument, Protocol):
     def output_on(self, channel: int) -> None: ...
     def output_off(self, channel: int) -> None: ...
     def output_state(self, channel: int) -> bool: ...
+    def interrupt_output(self, channel: int, duration_ms: float) -> None:
+        """Drop the output for a stated time, then restore it.
+
+        Distinct from ``output_off()`` + ``output_on()`` because the *length*
+        of the interruption is the parameter under test: a device specified to
+        ride through a short supply hole and to drop out of a long one can only
+        be exercised by an interruption that carries its duration. Splitting it
+        into two untimed calls discards exactly the number that decides the
+        answer.
+        """
+        ...
 
 
 @runtime_checkable
@@ -74,6 +85,17 @@ class Multimeter(Instrument, Protocol):
 
     def measure_dc_voltage(self) -> float: ...
     def measure_ac_current_rms(self) -> float: ...
+    def measure_line_kv(self) -> float:
+        """The line voltage the device is presented with, in kilovolts.
+
+        The bench does not apply line voltage directly — it drives a sensor or
+        a divider, and the ratio between generator volts and line kilovolts is
+        a property of that hardware on the day. So it is measured, for exactly
+        the reason the current path is: a stale ratio shifts every threshold in
+        the campaign by the same factor and leaves the results looking fine.
+        """
+        ...
+
     def measure_harmonic_current_rms(self) -> float:
         """RMS of the harmonic content only, excluding the fundamental.
 
@@ -88,13 +110,21 @@ class Multimeter(Instrument, Protocol):
 class Oscilloscope(Instrument, Protocol):
     """Captures time-domain traces — used for sub-millisecond relay timing."""
 
-    def capture_relay(self, relay: str, gate_ms: float) -> Waveform:
-        """Capture the DUT relay line from t=0 (stimulus applied).
+    def capture_relay(self, line: str, gate_ms: float) -> Waveform:
+        """Capture one named line of the DUT from t=0 (the stimulus instant).
 
-        One capture carries BOTH measurements the spec asks for: the rising
-        edge gives detection latency, and the width between the rising and
-        falling edges gives the latch/hold duration. Layer 2 does the edge
-        finding — the driver only moves samples.
+        The name is any trace the bench can render: the injected ``stimulus``,
+        a detector's digital output (``<detector>_pin``), or the relay contact
+        that pin drives (``<detector>``). Reading two of them is what separates
+        the three intervals a detection has — detection time is the pin edge,
+        relay set time is the gap to the contact edge, and total time is the
+        contact edge. A single trace cannot tell them apart, which is why a
+        bench puts two probes on the device rather than one.
+
+        Successive calls read different channels of the same acquisition, so
+        the traces share a time origin and subtracting their edges is
+        meaningful. Layer 2 does the edge finding; the driver only moves
+        samples.
         """
         ...
 

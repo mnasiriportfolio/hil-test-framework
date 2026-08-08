@@ -1,7 +1,13 @@
 *** Settings ***
-Documentation     Overcurrent detection — drive current past the trigger and verify
-...               the DUT relay trips within spec, timed on the oscilloscope, and
-...               holds for the required duration.
+Documentation     Overcurrent detection, slow and fast — bracket the trigger window
+...               from below and above, then time the trip on the oscilloscope.
+...
+...               The two detectors compare different quantities and are specified in
+...               opposite directions: the slow one integrates an RMS current and must
+...               NOT trip before its floor, because a protection that fires on inrush
+...               is a broken protection; the fast one compares the instantaneous
+...               current against a ceiling. Detection time, contact transit and hold
+...               are measured separately, on two probes of one acquisition.
 ...
 ...               This suite says nothing about how the bench is reached. Run it
 ...               against the in-process simulation, a raw TCP/SCPI rack, PyVISA or

@@ -20,9 +20,11 @@ from .scpi_commands import (
     digitize_relay,
     get_output,
     idn,
+    interrupt_output,
     measure_ac_current,
     measure_dc_voltage,
     measure_harmonic_current,
+    measure_line_kv,
     set_amplitude_vpp,
     set_frequency_hz,
     set_function,
@@ -111,6 +113,11 @@ class LanSignalGenerator(_LanDriver):
         self._require_connection()
         return self.io.query(get_output(channel)).strip() in {"1", "ON"}
 
+    def interrupt_output(self, channel: int, duration_ms: float) -> None:
+        self._require_connection()
+        self.io.write(interrupt_output(channel, duration_ms))
+        self.io.sync()
+
 
 class LanMultimeter(_LanDriver):
     def __init__(
@@ -121,6 +128,10 @@ class LanMultimeter(_LanDriver):
     def measure_dc_voltage(self) -> float:
         self._require_connection()
         return self.io.query_float(measure_dc_voltage())
+
+    def measure_line_kv(self) -> float:
+        self._require_connection()
+        return self.io.query_float(measure_line_kv())
 
     def measure_ac_current_rms(self) -> float:
         self._require_connection()

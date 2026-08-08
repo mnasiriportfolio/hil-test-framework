@@ -92,12 +92,21 @@ return dt, [high if rise &lt;= i &lt; fall else 0.0 for i in range(n)]</code></p
   <code>0.0</code>: <code>inf</code> fails a "&lt;= limit" check, whereas <code>0.0</code>
   would sail through it.</div>
 
-  <h2>Self-calibration lives here too</h2>
-<pre><code class="python">def analog_output_a(self, channel: int, requested_a: float) -> float:
-    raw = requested_a * (1.0 + self.cfg.analog_output_gain_error)
-    return raw * self.analog_correction</code></pre>
-  <p>The DUT reproduces its input with a gain error. A test can later write
-  <code>analog_correction</code> to cancel it — the mechanism behind Chapter 7's self-cal.</p>
+  <h2>The analog outputs are current loops</h2>
+<pre><code class="python">def analog_output_ma(self, channel: int) -> float:
+    c = self.cfg
+    span = c.analog_full_scale_ma - c.analog_zero_ma
+    signal = (self.line_kv() / c.analog_full_scale_kv) * span
+    return (c.analog_zero_ma + signal * (1.0 + c.analog_error(channel))) * self.analog_correction</code></pre>
+  <p>Zero line volts sits at the loop's <em>live zero</em> — 4 mA, not 0 mA — so a broken
+  wire reads 0 mA and is distinguishable from a genuine zero reading. Full scale sits at
+  20 mA.</p>
+  <div class="box why"><b>Note what the gain error multiplies.</b>
+  It scales the <em>signal</em>, not the live zero. Scaling both would make the reported
+  error in kilovolts grow without limit as the signal shrank, so a perfectly linear channel
+  would look worse the lower it was driven — which is the behaviour of an offset error, not
+  a gain one. Getting this wrong does not crash anything; it just quietly reports the wrong
+  physics, and the test that consumes it inherits the mistake.</div>
 
   <h3>Key concepts introduced</h3>
   <p class="pillrow"><span>shared mutable state</span><span>determinism</span><span>generator expressions</span><span>list comprehensions</span></p>

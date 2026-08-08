@@ -1,4 +1,4 @@
-name,enabled,trigger,tolerance_pct,detect_max_ms,hold_min_s,harmonic_order,dut_channel
-slow_ac,true,200,3,2000,3,,
-fast_dc,false,500,3,10,3,,
-validation_ac,false,350,3,1500,3,,
+name,enabled,detector,trigger_quantity,trigger,tolerance_pct,drive_a,detect_min_ms,detect_max_ms,relay_set_max_ms,hold_min_s,line_kv
+slow_ac,true,overcurrent,rms,200,3,300,1200,,5,3,1.5
+fast_ac,true,fast_overcurrent,peak,500,3,780,,5,5,3,1.5
+slow_low_trigger,false,overcurrent,rms,120,3,180,1200,,5,3,1.5

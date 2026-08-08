@@ -1,7 +1,11 @@
 *** Settings ***
-Documentation     Harmonic detection — hold a DC voltage, inject a harmonic on the
-...               current input and verify the DUT's harmonic relay trigger, scope
-...               timing and hold.
+Documentation     Harmonic detection — hold the line at DC, then inject alternating
+...               current on the current input. On a DC line every ampere of AC is
+...               contamination, which is what this detector watches for.
+...
+...               Verifies that it stays quiet below the trigger window, trips above
+...               it, and that detection time, contact transit and hold are each
+...               inside their own limit.
 ...
 ...               Transport-agnostic: change ${CONFIG} to run the identical suite
 ...               over sockets, PyVISA or the containerised bench.

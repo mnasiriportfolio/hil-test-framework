@@ -95,31 +95,35 @@
   <section class="slide">
     <h2>Config- and data-driven</h2>
     <p class="big">One <code>bench_config.yaml</code> selects the bench. CSV <em>plans</em> define scenarios. Re-target to a new device by editing a spreadsheet and flipping <code>enabled</code>.</p>
-    <pre>name,enabled,trigger,tolerance_pct,detect_max_ms,hold_min_s
-slow_ac,true,200,3,2000,3
-fast_dc,false,500,3,10,3</pre>
+    <pre>name,enabled,detector,trigger_quantity,trigger,tol_pct,drive_a,detect_min_ms,detect_max_ms,relay_set_max_ms,hold_min_s
+slow_ac,true,overcurrent,rms,200,3,300,1200,,5,3
+fast_ac,true,fast_overcurrent,peak,500,3,780,,5,5,3</pre>
+    <p class="big">Two timing columns, and the blanks matter: the slow row states a
+    <em>floor</em>, the fast row a ceiling.</p>
   </section>
 
   <section class="slide">
-    <h2>Three real test patterns</h2>
+    <h2>Five real test patterns</h2>
     <div class="row">
-      <div class="mini"><h3>Overcurrent</h3><small>Drive current past a trigger; time the relay on a scope; verify hold.</small></div>
-      <div class="mini"><h3>Harmonic</h3><small>Inject a harmonic on the current input; confirm the RMS-band trigger.</small></div>
-      <div class="mini"><h3>Analog output</h3><small>Check the DUT's reproduced output — and auto-calibrate if it drifts.</small></div>
+      <div class="mini"><h3>Line detection</h3><small>Find pick-up by creeping the supply up; prove drop-out sits lower; ride through a timed supply hole.</small></div>
+      <div class="mini"><h3>Overcurrent, slow</h3><small>RMS trigger. Detection time is a <em>floor</em> — tripping early is the failure.</small></div>
+      <div class="mini"><h3>Overcurrent, fast</h3><small>Instantaneous trigger, ceiling. In AC the measured time carries the sine's own phase delay.</small></div>
+      <div class="mini"><h3>Harmonic</h3><small>AC content on a DC line. On an AC line the same reading means nothing.</small></div>
+      <div class="mini"><h3>Analog output</h3><small>4&ndash;20 mA loop, converted back to kV and judged point by point.</small></div>
     </div>
   </section>
 
   <section class="slide">
     <h2>Oscilloscope-based timing</h2>
     <canvas id="scope" width="760" height="300"></canvas>
-    <p class="big">One acquisition, two measurements: the rising edge is the detection latency, the width to the falling edge is the latch duration. The threshold is derived from the trace, so any relay voltage works unconfigured.</p>
+    <p class="big">One acquisition, <em>two probes</em>, three intervals: stimulus&nbsp;&rarr;&nbsp;digital pin is the device deciding, pin&nbsp;&rarr;&nbsp;contact is the relay catching up, and the sum is what the outside world sees. Three limits, three measurements &mdash; one probe on the relay lets a slow contact hide inside the detection budget. The edge threshold is derived from the trace, so any relay voltage works unconfigured.</p>
   </section>
 
   <section class="slide">
-    <h2>Automated self-calibration</h2>
-    <pre>CH1 output error (pre-cal)   3.00 %   <span class="pill CHECK">CHECK</span>
-apply correction 0.9709 →    0.00 %   <span class="pill PASS">PASS</span></pre>
-    <p class="big">Out of tolerance? The framework computes a correction, applies it, and re-verifies — then reports both steps honestly.</p>
+    <h2>Bracket the trigger; never read it back</h2>
+    <pre>No trip below the window   184.3 A, relay idle     <span class="pill PASS">PASS</span>
+Trip above the window      216.3 A, relay driven   <span class="pill PASS">PASS</span></pre>
+    <p class="big">A tolerance claims the trip point lies inside a window. Driving the nominal trigger and checking the meter reads the nominal trigger measures the <em>generator</em> — it passes against a device with no detector in it. Sitting either side of the window is what pins the trip point down.</p>
   </section>
 
   <section class="slide">

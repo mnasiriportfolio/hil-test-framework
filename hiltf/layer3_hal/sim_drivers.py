@@ -49,6 +49,10 @@ class SimSignalGenerator(BaseDriver):
         self._require_connection()
         return self.bench.output_state(channel)
 
+    def interrupt_output(self, channel: int, duration_ms: float) -> None:
+        self._require_connection()
+        self.bench.interrupt_output(channel, duration_ms)
+
 
 class SimMultimeter(BaseDriver):
     def __init__(self, bench: SimulatedBench, name: str = "SIM-DMM") -> None:
@@ -61,6 +65,10 @@ class SimMultimeter(BaseDriver):
     def measure_dc_voltage(self) -> float:
         self._require_connection()
         return self.bench.voltage_dc_v()
+
+    def measure_line_kv(self) -> float:
+        self._require_connection()
+        return self.bench.line_kv()
 
     def measure_ac_current_rms(self) -> float:
         self._require_connection()

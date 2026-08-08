@@ -86,10 +86,38 @@ def test_sub_millisecond_resolution():
 
 
 # --- capture window --------------------------------------------------------
+def _scenario(**kwargs):
+    fields = dict(
+        name="x",
+        enabled=True,
+        trigger=200.0,
+        tolerance_pct=3.0,
+        detect_min_ms=0.0,
+        detect_max_ms=float("inf"),
+        relay_set_max_ms=5.0,
+        hold_min_s=3.0,
+        extra={},
+    )
+    fields.update(kwargs)
+    return Scenario(**fields)
+
+
 def test_gate_covers_detection_plus_hold():
     """Too short a gate truncates the pulse and understates the hold."""
-    sc = Scenario("x", True, 200.0, 3.0, detect_max_ms=2000.0, hold_min_s=3.0, extra={})
-    assert capture_gate_ms(sc) == pytest.approx(5500.0)
+    assert capture_gate_ms(_scenario(detect_max_ms=2000.0)) == pytest.approx(5500.0)
+
+
+def test_gate_stays_finite_when_the_spec_states_no_ceiling():
+    """A floor-only spec still needs a window, and a wide one.
+
+    ``inf`` is a legitimate ceiling for "the spec is silent", but it cannot be
+    handed to a scope. The gate opens well past the floor so a device that
+    trips far too late is measured rather than mistaken for one that never
+    tripped at all.
+    """
+    gate = capture_gate_ms(_scenario(detect_min_ms=1200.0))
+    assert math.isfinite(gate)
+    assert gate > 1200.0 + 3.0 * 1000.0
 
 
 # --- drive levels ----------------------------------------------------------
