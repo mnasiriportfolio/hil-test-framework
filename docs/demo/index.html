@@ -153,16 +153,16 @@
             <div class="fld"><label>Tolerance (%)</label><input id="tol" type="number" value="3" step="0.5" /></div>
           </div>
           <div class="row">
-            <div class="fld" data-for="slow"><label>Detect floor (ms)</label>
+            <div class="fld" data-for="slow"><label>Earliest allowed trip (ms)</label>
               <input id="detectMin" type="number" value="1200" step="50" />
-              <div class="hint">must NOT trip before this</div></div>
-            <div class="fld" data-for="fast harmonic line"><label>Detect ceiling (ms)</label>
+              <div class="hint">tripping sooner than this is the failure</div></div>
+            <div class="fld" data-for="fast harmonic line"><label>Latest allowed trip (ms)</label>
               <input id="detectMax" type="number" value="5" step="1" /></div>
             <div class="fld"><label>Relay set max (ms)</label>
               <input id="relaySetMax" type="number" value="5" step="1" /></div>
             <div class="fld" data-for="slow fast harmonic"><label>Hold min (s)</label>
               <input id="holdMin" type="number" value="3" step="0.1" /></div>
-            <div class="fld" data-for="line"><label>Drop-out max (ms)</label>
+            <div class="fld" data-for="line"><label>Latest allowed drop-out (ms)</label>
               <input id="releaseMax" type="number" value="1000" step="50" /></div>
           </div>
           <div class="row" data-for="line">
@@ -338,7 +338,7 @@ def within_tolerance(m, trigger, tol_pct):
 def timing_ok(measured_ms, min_ms=0.0, max_ms=float("inf")):
     """Both bounds, because real specifications are written both ways round.
 
-    A fast protection states a ceiling. A slow one states a floor: it must not
+    A fast protection states a maximum. A slow one states a minimum: it must not
     trip before its time, because a protection that fires on inrush is broken.
     An infinite edge time is 'no edge was seen', never 'very fast'.
     """
@@ -617,6 +617,26 @@ function detectWindow(minMs, maxMs){
   return `${g(lo)}–${g(hi)} ms`;
 }
 
+
+/** Timebase for one measurement, the way a bench engineer sets one.
+ *
+ * The scope is triggered on the stimulus edge and swept just long enough to
+ * put the event being timed in the middle of the screen. A 3 ms trip and a
+ * 3 s hold cannot share a sweep — on the hold's timebase the trip is a single
+ * pixel sitting on top of t=0, which is exactly the picture that makes a
+ * measured delay look like no delay at all. So each interval gets its own
+ * acquisition, which is also why a real report carries one figure per
+ * measurement instead of one figure per test.
+ */
+function sweepFor(intervalMs, fallbackMs){
+  const v = isFinite(intervalMs) && intervalMs > 0 ? intervalMs : fallbackMs;
+  return [-0.18 * v, 1.85 * v];
+}
+
+/** Marks t=0 on every tile: the instant the stimulus was applied. */
+const STIMULUS_MARK = {x:0, color:'#111', dash:[2,3], width:1.2,
+                       label:'stimulus applied', at:'bottom'};
+
 /* ==================================================================== *
  *  Acquisition
  * ==================================================================== */
@@ -730,7 +750,7 @@ function overcurrentCapture({rng, steps, test}){
         `climbing from its zero crossing to the threshold — a property of the stimulus, not the ` +
         `device, which is why an instantaneous limit is honestly verified with DC.` : ''}`
       : `The relay tripped at ${t.detection.toFixed(0)} ms, and the spec says it must not trip ` +
-        `before ${g(spec.detectMin)} ms. This limit is a floor, not a ceiling: a slow protection ` +
+        `before ${g(spec.detectMin)} ms. This limit is a minimum, not a maximum: a slow protection ` +
         `integrates deliberately so that inrush does not look like a fault. Tripping early is the ` +
         `failure — and it is the one a single "must be under N ms" check cannot express.`;
   else if(!timingOk(t.relaySet, 0, spec.relaySetMax))
@@ -743,8 +763,18 @@ function overcurrentCapture({rng, steps, test}){
           `the width between the contact's own edges, not the device's claim about itself.`;
 
   const yPk = Math.max(peakA, hi*(quantity==='peak'?1:SQRT2)) * 1.28;
-  const xLim = [t0/1000, tEnd/1000];
   const specPeak = quantity === 'peak' ? 1 : SQRT2;
+  const sweep = sweepFor(t.total, gate*0.5);        // timebase for the trip
+  const fullXLim = [t0/1000, tEnd/1000];            // slower sweep for the hold
+
+  const limitLines = [
+    isFinite(spec.detectMax) && spec.detectMax >= sweep[0] && spec.detectMax <= sweep[1]
+      ? {x:spec.detectMax, color:'#a2142f', dash:[7,4], width:1.3,
+         label:`limit: trip within ${g(spec.detectMax)} ms`, at:'top'} : null,
+    spec.detectMin > 0 && spec.detectMin >= sweep[0] && spec.detectMin <= sweep[1]
+      ? {x:spec.detectMin, color:'#a2142f', dash:[7,4], width:1.3,
+         label:`limit: must not trip before ${g(spec.detectMin)} ms`, at:'top'} : null,
+  ].filter(Boolean);
 
   return {
     why,
@@ -752,32 +782,38 @@ function overcurrentCapture({rng, steps, test}){
            + '   — simulated bench',
     xlabel: 'Time since stimulus (s)', nSamples: n, dt,
     tiles: [
-      {ylabel:'Injected current (A)', xLim, yLim:[-yPk, yPk],
+      // probe A: the stimulus, and the trigger edge everything is timed from
+      {ylabel:'Injected current (A)', xLim:sweep, xUnit:'ms', yLim:[-yPk, yPk],
        bands:[{y0:lo*specPeak, y1:hi*specPeak, color:'rgba(119,172,48,.16)'},
               {y0:-hi*specPeak, y1:-lo*specPeak, color:'rgba(119,172,48,.16)'}],
-       series:[{name:'stimulus', color:'#0072bd', width:1.1, y:current, t0, dt}],
+       series:[{name:'stimulus', color:'#0072bd', width:1.4, y:current, t0, dt}],
+       vlines:[STIMULUS_MARK],
        annot:[{text:`${quantity} = ${fmt(observed)} A   (trigger ${g(trigger)} ±${g(tol)} %)`,
-               x:0.014, y:0.12, align:'left'},
-              {text:'shaded: trigger window', x:0.982, y:0.12, align:'right', soft:true}]},
-      {ylabel:'DUT digital lines (V)', xLim, xlabel:true, yLim:[-0.3, 3.8], legend:true,
+               x:0.014, y:0.12, align:'left'}]},
+
+      // probe B: the device answering, on the same sweep as probe A
+      {ylabel:'DUT digital lines (V)', xLim:sweep, xUnit:'ms', xlabel:true,
+       yLim:[-0.3, 3.8], legend:true,
        series:[{name:'digital pin (the decision)', color:'#d95319', width:1.6, y:t.pin, t0, dt},
                {name:'relay contact (the action)', color:'#77ac30', width:1.6, dash:[6,4],
                 y:t.contact, t0, dt}],
-       vlines:[
-         isFinite(spec.detectMax) && spec.detectMax/1000 <= xLim[1]
-           ? {x:spec.detectMax/1000, color:'#a2142f', dash:[7,4], width:1.3,
-              label:`ceiling ${g(spec.detectMax)} ms`, at:'top'} : null,
-         spec.detectMin > 0 && spec.detectMin/1000 <= xLim[1]
-           ? {x:spec.detectMin/1000, color:'#a2142f', dash:[7,4], width:1.3,
-              label:`floor ${g(spec.detectMin)} ms — must not trip before this`, at:'top'} : null,
-         isFinite(t.detection) ? {x:t.detection/1000, color:'#333', dash:[3,3], width:1,
-                                  label:`t_detect = ${ms(t.detection)}`, at:'bottom'} : null,
-       ].filter(Boolean),
-       span: isFinite(t.total) ? {x0:t.total/1000,
-                                  x1:(t.total + t.hold*1000)/1000, y:1.9,
-                                  label:`hold = ${t.hold.toFixed(2)} s`} : null},
+       vlines:[STIMULUS_MARK].concat(limitLines),
+       span: isFinite(t.detection)
+         ? {x0:0, x1:t.detection, y:2.55, label:`detection = ${ms(t.detection)} after the stimulus`}
+         : null},
+
+      // a slower sweep, because the latch is three orders of magnitude longer
+      {ylabel:'Relay contact (V)', xLim:fullXLim, xlabel:true, yLim:[-0.3, 3.8],
+       title:'Slower sweep — the latch outliving the stimulus',
+       series:[{name:'relay contact', color:'#77ac30', width:1.6, y:t.contact, t0, dt}],
+       vlines:[STIMULUS_MARK],
+       span: isFinite(t.total)
+         ? {x0:t.total/1000, x1:(t.total + t.hold*1000)/1000, y:1.9,
+            label:`hold = ${t.hold.toFixed(2)} s`} : null},
+
+      // and one more zoom, where the contact is seen chasing the pin
       {ylabel:'DUT digital lines (V)', xUnit:'ms', xlabel:true, legend:true,
-       title:`Detail — the contact chasing the pin (relay set = ${ms(t.relaySet)})`,
+       title:`Fastest sweep — the contact chasing the pin (relay set = ${ms(t.relaySet)})`,
        xLim: isFinite(t.detection) ? [t.detection - 1.5, t.detection + Math.max(6, t.relaySet*2)]
                                    : [0, 10],
        yLim:[-0.3, 3.8],
@@ -788,6 +824,7 @@ function overcurrentCapture({rng, steps, test}){
     ],
   };
 }
+
 
 /* ---- harmonic: AC content riding on a DC line ---------------------- */
 function harmonicCapture({rng, steps}){
@@ -831,35 +868,45 @@ function harmonicCapture({rng, steps}){
       `${fmt(deviceTrigger)} A threshold, so nothing tripped.`;
 
   const yPk = Math.max(peakA, hi*SQRT2) * 1.28;
-  const xLim = [t0/1000, tEnd/1000];
+  const sweep = sweepFor(t.total, gate*0.5);
+  const fullXLim = [t0/1000, tEnd/1000];
   return {
     why, title:'Harmonic detection — AC content on a DC line   — simulated bench',
     xlabel:'Time since stimulus (s)', nSamples:n, dt,
     tiles:[
-      {ylabel:'Line voltage (kV)', xLim, yLim:[-0.2*lineKv, lineKv*1.35],
+      {ylabel:'Line voltage (kV)', xLim:sweep, xUnit:'ms', yLim:[-0.2*lineKv, lineKv*1.35],
        series:[{name:'line', color:'#7e2f8e', width:1.4, y:line, t0, dt}],
+       vlines:[STIMULUS_MARK],
        annot:[{text:`DC line at ${fmt(lineKv)} kV — every ampere of AC below is contamination`,
                x:0.014, y:0.16, align:'left'}]},
-      {ylabel:'AC content (A)', xLim, yLim:[-yPk, yPk],
+      {ylabel:'AC content (A)', xLim:sweep, xUnit:'ms', yLim:[-yPk, yPk],
        bands:[{y0:lo*SQRT2, y1:hi*SQRT2, color:'rgba(119,172,48,.16)'},
               {y0:-hi*SQRT2, y1:-lo*SQRT2, color:'rgba(119,172,48,.16)'}],
-       series:[{name:'injected', color:'#0072bd', width:1.1, y:current, t0, dt}],
+       series:[{name:'injected', color:'#0072bd', width:1.4, y:current, t0, dt}],
+       vlines:[STIMULUS_MARK],
        annot:[{text:`I_rms = ${fmt(measured)} A   (trigger ${g(trigger)} ±${g(tol)} %)`,
                x:0.014, y:0.12, align:'left'}]},
-      {ylabel:'DUT digital lines (V)', xLim, xlabel:true, yLim:[-0.3, 3.8], legend:true,
+      {ylabel:'DUT digital lines (V)', xLim:sweep, xUnit:'ms', xlabel:true,
+       yLim:[-0.3, 3.8], legend:true,
        series:[{name:'digital pin', color:'#d95319', width:1.6, y:t.pin, t0, dt},
                {name:'relay contact', color:'#77ac30', width:1.6, dash:[6,4], y:t.contact, t0, dt}],
-       vlines:[spec.detectMax/1000 <= xLim[1]
-         ? {x:spec.detectMax/1000, color:'#a2142f', dash:[7,4], width:1.3,
-            label:`ceiling ${g(spec.detectMax)} ms`, at:'top'} : null,
-         isFinite(t.detection) ? {x:t.detection/1000, color:'#333', dash:[3,3], width:1,
-                                  label:`t_detect = ${ms(t.detection)}`, at:'bottom'} : null,
-       ].filter(Boolean),
+       vlines:[STIMULUS_MARK].concat(
+         spec.detectMax >= sweep[0] && spec.detectMax <= sweep[1]
+           ? [{x:spec.detectMax, color:'#a2142f', dash:[7,4], width:1.3,
+               label:`limit: detect within ${g(spec.detectMax)} ms`, at:'top'}] : []),
+       span: isFinite(t.detection)
+         ? {x0:0, x1:t.detection, y:2.55, label:`detection = ${ms(t.detection)} after the stimulus`}
+         : null},
+      {ylabel:'Relay contact (V)', xLim:fullXLim, xlabel:true, yLim:[-0.3, 3.8],
+       title:'Slower sweep — the latch outliving the stimulus',
+       series:[{name:'relay contact', color:'#77ac30', width:1.6, y:t.contact, t0, dt}],
+       vlines:[STIMULUS_MARK],
        span: isFinite(t.total) ? {x0:t.total/1000, x1:(t.total+t.hold*1000)/1000, y:1.9,
                                   label:`hold = ${t.hold.toFixed(2)} s`} : null},
     ],
   };
 }
+
 
 /* ---- line detection: thresholds, hysteresis, ride-through, timing --- */
 function lineCapture({rng, steps}){
@@ -927,39 +974,44 @@ function lineCapture({rng, steps}){
           `through anything up to ${g(rideMs)} ms. Note this can only be tested by an interruption ` +
           `that carries its own duration — switching off and on again throws that number away.`;
 
-  const xLim = [t0/1000, tEnd/1000];
+  const sweep = sweepFor(tContact, gate*0.5);
   return {
     why, title:'Line detection — pick-up, hysteresis and drop-out   — simulated bench',
     xlabel:'Time since supply applied (s)', nSamples:n, dt,
     tiles:[
-      {ylabel:'Line voltage (kV)', xLim, yLim:[-0.2*nominal, nominal*1.4],
+      {ylabel:'Line voltage (kV)', xLim:sweep, xUnit:'ms', yLim:[-0.2*nominal, nominal*1.4],
        bands:[{y0:devOut, y1:devIn, color:'rgba(217,83,25,.13)'}],
        hlines:[{y:devIn, color:'#a2142f', dash:[6,4], width:1.2},
                {y:devOut, color:'#0072bd', dash:[6,4], width:1.2}],
        series:[{name:'line', color:'#7e2f8e', width:1.4, y:lineTrace, t0, dt}],
+       vlines:[STIMULUS_MARK],
        annot:[{text:`pick-up ${fmt(devIn)} kV · drop-out ${fmt(devOut)} kV · shaded band = hysteresis`,
                x:0.014, y:0.13, align:'left'}]},
-      {ylabel:'DUT digital lines (V)', xLim, xlabel:true, yLim:[-0.3, 3.8], legend:true,
+      {ylabel:'DUT digital lines (V)', xLim:sweep, xUnit:'ms', xlabel:true,
+       yLim:[-0.3, 3.8], legend:true,
        series:[{name:'digital pin', color:'#d95319', width:1.6, y:pin, t0, dt},
                {name:'relay contact', color:'#77ac30', width:1.6, dash:[6,4], y:contact, t0, dt}],
-       vlines:[spec.detectMax/1000 <= xLim[1]
-         ? {x:spec.detectMax/1000, color:'#a2142f', dash:[7,4], width:1.3,
-            label:`ceiling ${g(spec.detectMax)} ms`, at:'top'} : null,
-         isFinite(tContact) ? {x:tContact/1000, color:'#333', dash:[3,3], width:1,
-                               label:`line-in = ${ms(tContact)}`, at:'bottom'} : null,
-       ].filter(Boolean)},
+       vlines:[STIMULUS_MARK].concat(
+         spec.detectMax >= sweep[0] && spec.detectMax <= sweep[1]
+           ? [{x:spec.detectMax, color:'#a2142f', dash:[7,4], width:1.3,
+               label:`limit: declare within ${g(spec.detectMax)} ms`, at:'top'}] : []),
+       span: isFinite(tContact)
+         ? {x0:0, x1:tContact, y:2.55, label:`line-in = ${ms(tContact)} after the supply`}
+         : null},
       {ylabel:'Relay contact (V)', xUnit:'ms', xlabel:true,
        title:'Drop-out — a separate acquisition, triggered on the supply going away',
-       xLim:[0, rGate], yLim:[-0.3, 3.8],
+       xLim:sweepFor(releasedMs, spec.releaseMax), yLim:[-0.3, 3.8],
        series:[{name:'contact', color:'#77ac30', width:1.6, y:release, t0:0, dt}],
-       vlines:[{x:spec.releaseMax, color:'#a2142f', dash:[7,4], width:1.3,
-                label:`ceiling ${g(spec.releaseMax)} ms`, at:'top'},
-               isFinite(releasedMs) ? {x:releasedMs, color:'#333', dash:[3,3], width:1,
-                                       label:`line-out = ${ms(releasedMs)}`, at:'bottom'} : null,
-       ].filter(Boolean)},
+       vlines:[{x:0, color:'#111', dash:[2,3], width:1.2, label:'supply removed', at:'bottom'}].concat(
+         spec.releaseMax <= sweepFor(releasedMs, spec.releaseMax)[1]
+           ? [{x:spec.releaseMax, color:'#a2142f', dash:[7,4], width:1.3,
+               label:`limit: open within ${g(spec.releaseMax)} ms`, at:'top'}] : []),
+       span: isFinite(releasedMs)
+         ? {x0:0, x1:releasedMs, y:2.55, label:`line-out = ${ms(releasedMs)}`} : null},
     ],
   };
 }
+
 
 /* ---- analog output: a 4-20 mA current loop ------------------------- */
 function analogCapture({rng, steps}){
@@ -1074,7 +1126,7 @@ function columnise(s, xLim, w, xUnit){
 function drawFigure(fig, progress){
   const cv = $('fig'), ctx = cv.getContext('2d');
   const nT = fig.tiles.length;
-  const H = nT >= 3 ? 700 : 470;
+  const H = nT >= 4 ? 850 : nT === 3 ? 700 : 470;
   if(cv.height !== H) cv.height = H;
   const W = cv.width;
 
@@ -1323,7 +1375,7 @@ const TIPS = {
         'fails — with no gap between the two thresholds, a supply resting near the limit chatters ' +
         'the contact.',
   slow: 'Try it: set <b>Real detect</b> to 900 ms. It still trips well inside two seconds, and the ' +
-        'case correctly fails: the limit is a <i>floor</i>, because a protection that fires on ' +
+        'case correctly fails: the limit is a <i>minimum</i>, because a protection that fires on ' +
         'inrush is a broken protection. A single "under N ms" check cannot express that.',
   fast: 'Try it: lower <b>Drive for timing</b> towards 510 A. Detection stretches out — an ' +
         'instantaneous detector cannot answer before the sine physically reaches the threshold, so ' +
