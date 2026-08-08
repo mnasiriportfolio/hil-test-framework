@@ -1,0 +1,4 @@
+name,enabled,trigger,tolerance_pct,detect_max_ms,hold_min_s,harmonic_order,dut_channel
+ch1_50a,true,50,1,0,0,,1
+ch2_100a,true,100,1,0,0,,2
+ch3_150a,false,150,1,0,0,,3

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>6 · Event bus &amp; reporting</title>
+<link rel="stylesheet" href="book.css" />
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <div class="brand">HIL <span>Book</span></div>
+  <div class="sub">The framework, taught from the code</div>
+  <a href="index.html">Cover &amp; contents</a>
+  <div class="grp">Foundations</div>
+  <a href="ch1.html">1 · The big picture</a>
+  <a href="ch2.html">2 · OOP building blocks</a>
+  <div class="grp">The layers</div>
+  <a href="ch3.html">3 · Layer 3 — the HAL</a>
+  <a href="ch4.html">4 · The simulated bench</a>
+  <a href="ch5.html">5 · Config &amp; plans</a>
+  <a href="ch6.html">6 · Event bus &amp; reporting</a>
+  <a href="ch7.html">7 · The keyword algorithms</a>
+  <div class="grp">Putting it together</div>
+  <a href="ch8.html">8 · Robot suites &amp; end-to-end</a>
+</nav>
+<main class="main">
+  <p class="tag">Chapter 6</p>
+  <h1>Event bus &amp; reporting</h1>
+  <p>How does a test result become a report without the test knowing what a report is? Through
+  a <b>publish/subscribe</b> event bus. Keywords <em>announce</em> results; a recorder
+  <em>listens</em>. Neither knows the other exists.</p>
+
+  <h2>The bus — tiny but powerful</h2>
+  <p>All of <code>event_bus.py</code> that matters:</p>
+<pre><code class="python">class EventBus:
+    def __init__(self) -> None:
+        self._subs: dict[str, list[Subscriber]] = defaultdict(list)
+
+    def subscribe(self, topic: str, handler: Subscriber) -> None:
+        self._subs[topic].append(handler)
+
+    def publish(self, topic: str, **payload) -> None:
+        event = Event(topic=topic, payload=payload)
+        for handler in self._subs.get(topic, []):
+            handler(event)</code></pre>
+
+  <div class="box analogy"><b>Analogy</b>
+  A radio station. The keyword broadcasts on a frequency (<code>"test.result"</code>); anyone
+  tuned in receives it. Add a second listener (a live dashboard, a spreadsheet writer) and
+  the broadcaster changes nothing.</p>
+
+  <div class="box why"><b>Why <code>defaultdict(list)</code>?</b>
+  The first time anyone subscribes to a topic, the list is created automatically — no
+  "if the key doesn't exist yet" bookkeeping. Small idiom, cleaner code.</p>
+
+  <h2>The recorder listens and grades</h2>
+  <p>From <code>report_recorder.py</code>. In its constructor it subscribes; from then on it
+  quietly accumulates every result:</p>
+<pre><code class="python">class ReportRecorder:
+    def __init__(self, bus: EventBus) -> None:
+        self.cases: list[CaseResult] = []
+        bus.subscribe(RESULT_TOPIC, self._on_result)
+
+    def _on_result(self, event: Event) -> None:
+        p = event.payload
+        case = self._get_case(p["suite"], p["case"])
+        case.steps.append(StepResult(check=p["check"], expected=p.get("expected", ""),
+                                     measured=p.get("measured", ""), outcome=p.get("outcome", "PASS")))</code></pre>
+
+  <p>Grading rolls up the steps — any <code>FAIL</code> fails the case; a <code>CHECK</code>
+  downgrades but doesn't fail:</p>
+<pre><code class="python">@property
+def outcome(self) -> str:
+    outcomes = {s.outcome for s in self.steps}
+    if "FAIL" in outcomes:
+        return "FAIL"
+    if "CHECK" in outcomes:
+        return "CHECK"
+    return "PASS"</code></pre>
+
+  <div class="box why"><b>Why three outcomes, not two?</b>
+  <code>CHECK</code> means "measured, worth a human's eye, but not a failure" — for example an
+  expected pre-calibration error. Collapsing it into PASS or FAIL would hide real information.</p>
+
+  <div class="box break"><b>What breaks if keywords kept their own results list</b>
+  You'd be back to tangled code: every new output format would mean editing every test. The
+  bus is what keeps the tests ignorant of reporting — and that ignorance is a feature.</p>
+
+  <h3>Key concepts introduced</h3>
+  <p class="pillrow"><span>publish/subscribe</span><span>decoupling</span><span>callbacks</span><span>roll-up grading</span></p>
+
+  <div class="quiz">
+    <details><summary>Quiz 1 — How would you add a JSON report without touching any test?</summary>
+    <p>Write a second subscriber to <code>RESULT_TOPIC</code> that writes JSON. The bus delivers
+    to it alongside the Markdown recorder; keywords never change.</p></details>
+    <details><summary>Quiz 2 — A case has steps PASS, PASS, CHECK. What's the case outcome?</summary>
+    <p><code>CHECK</code> — no FAIL present, but a CHECK downgrades the overall result.</p></details>
+  </div>
+
+  <div class="exercise"><b>Exercise 6.</b>
+  Write a five-line subscriber that just <code>print()</code>s every result event as it happens,
+  subscribe it to the bus in <code>examples/run_all.py</code>, and watch results stream live —
+  proof that many listeners can share one broadcast.</div>
+
+  <div class="nav"><a href="ch5.html">← 5 · Config &amp; plans</a><a href="ch7.html">7 · The keyword algorithms →</a></div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+# ---------------------------------------------------------------------------
+# THE DEFAULT BENCH — in-process simulation, zero dependencies.
+#
+# This is the one file you edit to move to another bench, another transport, or
+# to real hardware. Layers 1 and 2 never change: they are handed driver objects
+# by the Layer 3 registry (hiltf/layer3_hal/factory.py) and never learn which
+# kind they got.
+#
+# Sibling configs, same suites, same expectations:
+#   bench_socket.yaml    raw TCP sockets speaking SCPI, against the emulator
+#   bench_visa_sim.yaml  PyVISA through the pyvisa-sim backend
+#   bench_docker.yaml    the containerised bench (sockets + PyVISA + binary UDP)
+# ---------------------------------------------------------------------------
+
+bench:
+  name: "Generic HIL Bench (in-process simulation)"
+  simulate: true
+
+instruments:
+  signal_generator:
+    driver: sim_signal_generator
+    channels: 2
+  multimeter:
+    driver: sim_multimeter
+  oscilloscope:
+    driver: sim_oscilloscope
+    # 50 kS/s -> 0.02 ms resolution on a relay edge, and a capture that fits in
+    # memory. Detection limits here are ~2000 ms, so this is ample.
+    sample_rate_hz: 50000
+  dut:
+    driver: sim_dut
+
+# Ground-truth behaviour of the simulated device under test. The test plans hold
+# the *spec* values; the framework measures against this simulated reality and
+# flags any mismatch — the test verifies the device, not the other way around.
+#
+# Note the framework never reads volts_to_amps to decide what to drive: each
+# case measures the ratio live and derives its levels from the measurement.
+# This block is the *device*, not the test's assumptions about it.
+simulation:
+  volts_to_amps: 10.0          # amps per Vrms on the current channel
+  voltage_channel: 1
+  current_channel: 2
+
+  overcurrent_trigger_a: 200.0
+  overcurrent_detect_ms: 1200.0
+  overcurrent_hold_s: 3.08
+
+  harmonic_trigger_a: 1.5
+  harmonic_detect_ms: 1130.0
+  harmonic_hold_s: 3.20
+
+  analog_output_gain_error: 0.03   # 3 % gain error the self-cal discovers & corrects
+  relay_high_v: 3.3                # asserted level of the relay line on the scope

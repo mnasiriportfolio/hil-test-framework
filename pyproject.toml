@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hil-test-framework"
+version = "0.2.0"
+description = "A layered, config-driven Hardware-in-the-Loop test framework: one set of Robot Framework suites driven over an in-process simulation, raw TCP/SCPI, PyVISA, or a binary UDP protocol."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Mahdi Nasiri" }]
+keywords = [
+    "test-automation",
+    "hardware-in-the-loop",
+    "robot-framework",
+    "instrument-control",
+    "scpi",
+    "pyvisa",
+    "hal",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Scientific/Engineering",
+]
+
+# The core framework and both stdlib transports (in-process simulation and raw
+# TCP/SCPI) need nothing beyond these. PyVISA is deliberately optional: a bench
+# that does not use VISA should not have to install it.
+dependencies = [
+    "PyYAML>=6.0",
+    "robotframework>=6.0",
+]
+
+[project.optional-dependencies]
+# pyvisa-sim and pyvisa-py are both pure Python. Neither needs NI-VISA or any
+# other vendor runtime, so the whole VISA path is installable and testable in
+# CI. A system VISA library is only required to talk to real instruments.
+visa = [
+    "PyVISA>=1.13",
+    "PyVISA-sim>=0.6",
+    "PyVISA-py>=0.7",
+]
+dev = [
+    "pytest>=7.4",
+    "mypy>=1.8",
+    "ruff>=0.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/mnasiriportfolio/hil-test-framework"
+Documentation = "https://mnasiriportfolio.github.io/hil-test-framework/"
+Source = "https://github.com/mnasiriportfolio/hil-test-framework"
+
+[project.scripts]
+# The bench emulator, runnable from anywhere once installed.
+hiltf-bench = "hiltf.emulators.__main__:main"
+hiltf-healthcheck = "hiltf.emulators.healthcheck:main"
+
+[tool.setuptools.packages.find]
+include = ["hiltf*"]
+
+[tool.setuptools.package-data]
+# the pyvisa-sim device definition ships with the package
+"hiltf.emulators" = ["*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "integration: exercises a real socket or a real VISA session (still no hardware)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true

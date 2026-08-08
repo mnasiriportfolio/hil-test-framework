@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HIL Test Framework — The Code, Taught</title>
+<link rel="stylesheet" href="book.css" />
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <div class="brand">HIL <span>Book</span></div>
+  <div class="sub">The framework, taught from the code</div>
+  <a href="index.html">Cover &amp; contents</a>
+  <div class="grp">Foundations</div>
+  <a href="ch1.html">1 · The big picture</a>
+  <a href="ch2.html">2 · OOP building blocks</a>
+  <div class="grp">The layers</div>
+  <a href="ch3.html">3 · Layer 3 — the HAL</a>
+  <a href="ch4.html">4 · The simulated bench</a>
+  <a href="ch5.html">5 · Config &amp; plans</a>
+  <a href="ch6.html">6 · Event bus &amp; reporting</a>
+  <a href="ch7.html">7 · The keyword algorithms</a>
+  <div class="grp">Putting it together</div>
+  <a href="ch8.html">8 · Robot suites &amp; end-to-end</a>
+</nav>
+<main class="main">
+  <p class="tag">A teaching book</p>
+  <h1>HIL Test Framework — <br>The Code, Taught</h1>
+  <p class="big">This book teaches the whole codebase to someone who knows only a little
+  programming. We read the <em>real</em> files — every class, protocol and algorithm —
+  and stop to explain each object-oriented idea the first time it appears.</p>
+
+  <div class="box analogy"><b>Analogy</b>
+  Think of the framework as a theatre. Layer 1 is the <em>script</em> (what happens),
+  Layer 2 is the <em>director</em> (turns the script into actions), and Layer 3 is the
+  <em>cast and props</em> (the actual instruments — or, here, stand-ins). The magic is
+  that the script and director never need to know whether the props are real.</p>
+
+  <div class="box"><b>Scope note</b>
+  These chapters teach the three layers and the in-process simulated bench — the
+  foundation everything else is built on. The transports added since (raw TCP/SCPI,
+  PyVISA, and the DUT's binary UDP protocol), the bench emulators and the
+  containerised bench are documented in
+  <a href="../../ARCHITECTURE.md">ARCHITECTURE.md</a>, including the wire formats.
+  A couple of code excerpts here quote an earlier revision of a file; the ideas they
+  teach are unchanged, but read the source as the authority.</p>
+
+  <h2>How to read this book</h2>
+  <p>Each chapter follows the same shape:</p>
+  <ul>
+    <li><b>Big picture</b> — what this part is for, in one breath.</li>
+    <li><b>Walk the code</b> — the real source, in small pieces, with three kinds of margin notes:
+      <span class="pillrow"><span>Why — the reasoning</span><span>What breaks — if you got it wrong</span><span>Analogy — an everyday parallel</span></span></li>
+    <li><b>Key concepts</b> — the OOP ideas you just met.</li>
+    <li><b>Quiz</b> — a few questions with hidden answers.</li>
+    <li><b>Exercise</b> — something small to try in the repo.</li>
+  </ul>
+
+  <h2>What you'll be able to do by the end</h2>
+  <p>Explain what a <code>Protocol</code> is and why it lets one test suite drive both
+  a simulator and real hardware; follow a measurement from a Robot keyword down to the
+  simulated oscilloscope and back into a report; and add a new instrument or a new test
+  without touching the layers above it.</p>
+
+  <div class="box why"><b>Why this exists</b>
+  It mirrors — as a clean-room, fully-simulated project — the architecture I use for
+  real hardware validation. No proprietary code or device details appear anywhere; every
+  example runs on the included simulation.</p>
+
+  <div class="nav">
+    <span></span>
+    <a href="ch1.html">Start: The big picture →</a>
+  </div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

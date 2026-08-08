@@ -1,0 +1,26 @@
+.git
+.github
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# the docs site is a static site for GitHub Pages; it has no business in an
+# image whose job is to run tests
+docs
+
+# generated output — the container makes its own
+reports/docker-socket
+reports/docker-visa
+reports/ci
+
+.DS_Store
+.idea
+.vscode

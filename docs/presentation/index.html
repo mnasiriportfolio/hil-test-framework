@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HIL Test Framework — Presentation</title>
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--muted:#9fb2cc;--teal:#2ec7c0;--navy:#3b82f6;--pass:#37d67a;--check:#f4b740;--fail:#ff5c73;--line:#1e2f49}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Segoe UI,Roboto,Arial,sans-serif;overflow:hidden}
+  .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  .slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+         padding:6vw;opacity:0;transform:translateY(24px) scale(.98);transition:opacity .6s ease,transform .6s ease;pointer-events:none}
+  .slide.on{opacity:1;transform:none;pointer-events:auto}
+  h1{font-size:clamp(28px,5vw,56px);margin:.1em 0;text-align:center;line-height:1.1}
+  h2{font-size:clamp(22px,3.4vw,38px);margin:.1em 0 .3em;text-align:center}
+  p.big{font-size:clamp(16px,2.1vw,24px);color:var(--muted);max-width:900px;text-align:center}
+  .grad{background:linear-gradient(90deg,var(--teal),var(--navy));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .tag{color:var(--muted);letter-spacing:.32em;text-transform:uppercase;font-size:13px}
+  /* layers */
+  .layers{display:flex;flex-direction:column;gap:14px;width:min(760px,90vw)}
+  .layer{border:1px solid var(--line);border-radius:14px;padding:16px 20px;background:#111d33;opacity:0;transform:translateX(-30px);transition:.5s}
+  .slide.on .layer{opacity:1;transform:none}
+  .slide.on .layer:nth-child(1){transition-delay:.2s}
+  .slide.on .layer:nth-child(2){transition-delay:.5s}
+  .slide.on .layer:nth-child(3){transition-delay:.8s}
+  .layer b{color:var(--teal)}
+  .layer small{color:var(--muted)}
+  .arrow{color:var(--muted);text-align:center;font-size:20px}
+  /* cards row */
+  .row{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+  .mini{width:230px;border:1px solid var(--line);border-radius:14px;padding:18px;background:#111d33;opacity:0;transform:translateY(20px);transition:.5s}
+  .slide.on .mini{opacity:1;transform:none}
+  .slide.on .mini:nth-child(1){transition-delay:.2s}
+  .slide.on .mini:nth-child(2){transition-delay:.45s}
+  .slide.on .mini:nth-child(3){transition-delay:.7s}
+  .mini h3{margin:.1em 0;color:var(--teal)}
+  /* scope */
+  canvas{background:#08111f;border:1px solid var(--line);border-radius:12px;width:min(760px,92vw);height:300px}
+  code{background:#08111f;border:1px solid var(--line);border-radius:8px;padding:2px 7px;color:#bcd4ff;font-family:Consolas,monospace}
+  pre{background:#08111f;border:1px solid var(--line);border-radius:12px;padding:18px;color:#bcd4ff;font:14px/1.6 Consolas,monospace;max-width:90vw;overflow:auto}
+  .pill{padding:3px 12px;border-radius:20px;font-weight:800}
+  .PASS{background:rgba(55,214,122,.16);color:var(--pass)} .CHECK{background:rgba(244,183,64,.16);color:var(--check)}
+  .greens span{display:inline-block;margin:6px;padding:8px 14px;border:1px solid var(--line);border-radius:20px;background:#111d33}
+  /* controls */
+  .ctl{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;
+       background:#0f1a2ecc;backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:40px;padding:8px 14px;z-index:10}
+  .ctl button{background:none;border:0;color:var(--ink);font-size:18px;cursor:pointer;padding:6px 8px;border-radius:8px}
+  .ctl button:hover{background:#1b2b45}
+  .cap{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);max-width:min(900px,92vw);text-align:center;
+       color:var(--ink);background:#0f1a2ecc;border:1px solid var(--line);border-radius:12px;padding:10px 18px;font-size:clamp(14px,1.8vw,19px)}
+  .bar{position:fixed;top:0;left:0;height:4px;background:linear-gradient(90deg,var(--teal),var(--navy));width:0;transition:width .3s;z-index:10}
+  .count{color:var(--muted);font-variant-numeric:tabular-nums;font-size:14px;padding:0 6px}
+  a{color:var(--teal)}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="stage" id="stage">
+
+  <section class="slide">
+    <p class="tag">Portfolio project · simulated bench</p>
+    <h1>HIL Test <span class="grad">Framework</span></h1>
+    <p class="big">A layered, config-driven Hardware-in-the-Loop test framework — with a hardware abstraction layer and a fully simulated bench that runs anywhere.</p>
+  </section>
+
+  <section class="slide">
+    <h2>The problem</h2>
+    <p class="big">Validating measurement hardware by hand is slow, inconsistent, and hard to repeat. Wiring test logic directly to instrument addresses makes every bench a rewrite.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Three layers, one direction of knowledge</h2>
+    <div class="layers">
+      <div class="layer"><b>Layer 1 — Suites</b><br><small>Robot Framework specs. Test intent only: no code, no addresses.</small></div>
+      <div class="arrow">▼ keywords</div>
+      <div class="layer"><b>Layer 2 — Engine</b><br><small>Plans, keyword algorithms, event bus, reporting. Speaks only to interfaces.</small></div>
+      <div class="arrow">▼ Protocol interfaces</div>
+      <div class="layer"><b>Layer 3 — HAL</b><br><small>The only layer that knows the actual instrument (here: a simulation).</small></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>One suite, any transport</h2>
+    <p class="big">Layer 2 talks to <code>Protocol</code> interfaces, so a simulated driver and a real SCPI or NI-PXI driver are interchangeable. Moving to real hardware is a config change — not a code change.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Config- and data-driven</h2>
+    <p class="big">One <code>bench_config.yaml</code> selects the bench. CSV <em>plans</em> define scenarios. Re-target to a new device by editing a spreadsheet and flipping <code>enabled</code>.</p>
+    <pre>name,enabled,trigger,tolerance_pct,detect_max_ms,hold_min_s
+slow_ac,true,200,3,2000,3
+fast_dc,false,500,3,10,3</pre>
+  </section>
+
+  <section class="slide">
+    <h2>Three real test patterns</h2>
+    <div class="row">
+      <div class="mini"><h3>Overcurrent</h3><small>Drive current past a trigger; time the relay on a scope; verify hold.</small></div>
+      <div class="mini"><h3>Harmonic</h3><small>Inject a harmonic on the current input; confirm the RMS-band trigger.</small></div>
+      <div class="mini"><h3>Analog output</h3><small>Check the DUT's reproduced output — and auto-calibrate if it drifts.</small></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>Oscilloscope-based timing</h2>
+    <canvas id="scope" width="760" height="300"></canvas>
+    <p class="big">Detection latency is measured by finding the rising edge of the relay trace — the real technique, in code.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Automated self-calibration</h2>
+    <pre>CH1 output error (pre-cal)   3.00 %   <span class="pill CHECK">CHECK</span>
+apply correction 0.9709 →    0.00 %   <span class="pill PASS">PASS</span></pre>
+    <p class="big">Out of tolerance? The framework computes a correction, applies it, and re-verifies — then reports both steps honestly.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Event-sourced reporting</h2>
+    <p class="big">Keywords <em>publish</em> results to an event bus; a recorder <em>subscribes</em> and renders the report. Test logic never touches output format — add a new format without changing a single test.</p>
+  </section>
+
+  <section class="slide">
+    <h2>Verified green</h2>
+    <div class="greens">
+      <span>ruff ✓</span><span>mypy ✓</span><span>pytest — 21 passed</span>
+      <span>Robot — 3 suites</span><span>example → PASS</span><span>CI: py 3.10–3.12</span>
+    </div>
+    <p class="big" style="margin-top:24px">Python · Robot Framework · Protocol-based HAL · event bus · simulation mode.<br>
+    <a href="../demo/index.html">Try the interactive demo →</a></p>
+  </section>
+
+</div>
+
+<div class="cap" id="cap"></div>
+<div class="ctl">
+  <button id="prev" title="Previous">⏮</button>
+  <button id="play" title="Play/Pause">⏸</button>
+  <button id="next" title="Next">⏭</button>
+  <span class="count" id="count"></span>
+</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const captions = [
+    "A layered, config-driven Hardware-in-the-Loop test framework.",
+    "Testing hardware by hand is slow and hard to repeat.",
+    "Three layers — each knows strictly less than the one below it.",
+    "The hardware abstraction layer makes simulated and real drivers interchangeable.",
+    "Everything is driven by one config file and CSV test plans.",
+    "Three recognisable test-and-measurement patterns.",
+    "Detection timing is measured from a captured oscilloscope waveform.",
+    "When output drifts, the framework calibrates itself and re-verifies.",
+    "Results flow through an event bus into the reporter.",
+    "All checks pass in CI. Try the interactive demo."
+  ];
+  const durations = [4200,4200,6500,5200,6000,5200,6500,5600,5200,7000];
+  let i = 0, playing = true, timer = null;
+  const bar = document.getElementById('bar'), cap = document.getElementById('cap'), count = document.getElementById('count');
+
+  function show(n){
+    slides[i].classList.remove('on');
+    i = (n + slides.length) % slides.length;
+    slides[i].classList.add('on');
+    cap.textContent = captions[i];
+    count.textContent = `${i+1} / ${slides.length}`;
+    bar.style.width = ((i+1)/slides.length*100) + '%';
+    if(i === 6) drawScopeAnim();
+    schedule();
+  }
+  function schedule(){
+    clearTimeout(timer);
+    if(playing) timer = setTimeout(()=>show(i+1), durations[i]);
+  }
+  document.getElementById('next').onclick = ()=>show(i+1);
+  document.getElementById('prev').onclick = ()=>show(i-1);
+  document.getElementById('play').onclick = (e)=>{
+    playing = !playing; e.target.textContent = playing ? '⏸' : '▶'; schedule();
+  };
+  document.addEventListener('keydown', e=>{
+    if(e.key==='ArrowRight') show(i+1);
+    if(e.key==='ArrowLeft') show(i-1);
+    if(e.key===' '){ e.preventDefault(); document.getElementById('play').click(); }
+  });
+
+  // animated scope: relay edge sweeps in
+  function drawScopeAnim(){
+    const cv = document.getElementById('scope'), ctx = cv.getContext('2d');
+    const W = cv.width, H = cv.height, gate = 2000, span = 2500, edge = 1200;
+    let p = 0;
+    function frame(){
+      p = Math.min(1, p + 0.03);
+      ctx.clearRect(0,0,W,H);
+      ctx.strokeStyle='#152741'; ctx.lineWidth=1;
+      for(let k=0;k<=10;k++){const x=k/10*W;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+      for(let k=0;k<=6;k++){const y=k/6*H;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+      const xOf = ms=>ms/span*W, yLow=H*.8, yHigh=H*.25;
+      const shownEdge = edge; const drawTo = span*p;
+      ctx.strokeStyle='#2ec7c0'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(0,yLow);
+      if(drawTo < shownEdge){ ctx.lineTo(xOf(drawTo),yLow); }
+      else { ctx.lineTo(xOf(shownEdge),yLow); ctx.lineTo(xOf(shownEdge),yHigh); ctx.lineTo(xOf(drawTo),yHigh); }
+      ctx.stroke();
+      ctx.strokeStyle='#ff5c73'; ctx.setLineDash([6,5]); ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(xOf(gate),0); ctx.lineTo(xOf(gate),H); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='#ff9db0'; ctx.font='13px monospace'; ctx.fillText('gate 2000ms', xOf(gate)+6, 18);
+      if(drawTo >= shownEdge){
+        ctx.strokeStyle='#f4b740'; ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(xOf(shownEdge),0); ctx.lineTo(xOf(shownEdge),H); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle='#f4b740'; ctx.fillText('t = 1200ms', xOf(shownEdge)+6, H-10);
+      }
+      ctx.fillStyle='#9fb2cc'; ctx.fillText('relay (0→3.3V)', 8, 18);
+      if(p < 1 && slides[6].classList.contains('on')) requestAnimationFrame(frame);
+    }
+    frame();
+  }
+
+  slides[0].classList.add('on');
+  cap.textContent = captions[0]; count.textContent = `1 / ${slides.length}`; bar.style.width = (1/slides.length*100)+'%';
+  schedule();
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# THE PyVISA BENCH — the instruments are reached through VISA.
+#
+# Same suites, same plans. `visa_backend` picks how PyVISA gets there:
+#
+#   "@py"   pyvisa-py, a pure-Python VISA. With a ::SOCKET resource it talks to
+#           this repo's own bench emulator, so the entire PyVISA path — resource
+#           manager, session, termination handling, IEEE 488.2 binary block
+#           transfer — runs end to end against a live server with real bench
+#           physics behind it. No vendor runtime, no hardware. This is what
+#           docker-compose's `visa-runner` service uses.
+#
+#   "@sim"  pyvisa-sim, answering from hiltf/emulators/visa_sim.yaml. No
+#           network at all. Good for driver-contract tests (does the driver
+#           send the right header, does it parse the reply) — it cannot model
+#           bench physics, so it is not used for full scenario runs.
+#
+#   ""      the system VISA library (NI-VISA / Keysight IO Libraries) and real
+#           instruments, GPIB and USBTMC included. Same driver code.
+#
+# Run it:
+#     python -m hiltf.emulators
+#     robot --variable CONFIG:config/bench_visa.yaml hiltf/layer1_suites
+# ---------------------------------------------------------------------------
+
+bench:
+  name: "HIL Bench over PyVISA (pyvisa-py -> bench emulator)"
+  simulate: false
+
+instruments:
+  signal_generator:
+    driver: visa_signal_generator
+    resource: TCPIP0::${HILTF_BENCH_HOST:-127.0.0.1}::5025::SOCKET
+    visa_backend: "@py"
+    timeout_s: 10
+
+  multimeter:
+    driver: visa_multimeter
+    resource: TCPIP0::${HILTF_BENCH_HOST:-127.0.0.1}::5025::SOCKET
+    visa_backend: "@py"
+    timeout_s: 10
+
+  oscilloscope:
+    driver: visa_oscilloscope
+    resource: TCPIP0::${HILTF_BENCH_HOST:-127.0.0.1}::5025::SOCKET
+    visa_backend: "@py"
+    timeout_s: 30
+
+  # The DUT is not a VISA instrument — it never was. Mixed benches are the
+  # normal case, and the HAL is what lets one run span both.
+  dut:
+    driver: udp_dut
+    address: ${HILTF_BENCH_HOST:-127.0.0.1}
+    port: 50000
+    timeout_s: 2
+    retries: 3
+
+simulation:
+  volts_to_amps: 10.0
+  voltage_channel: 1
+  current_channel: 2
+
+  overcurrent_trigger_a: 200.0
+  overcurrent_detect_ms: 1200.0
+  overcurrent_hold_s: 3.08
+
+  harmonic_trigger_a: 1.5
+  harmonic_detect_ms: 1130.0
+  harmonic_hold_s: 3.20
+
+  analog_output_gain_error: 0.03
+  relay_high_v: 3.3

@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------
+  # The suite, on every supported Python. The integration tests start the
+  # bench emulator in-process on ephemeral ports, so sockets, the binary UDP
+  # protocol and the full PyVISA path all run here — with no hardware and no
+  # vendor VISA runtime.
+  # ---------------------------------------------------------------------
+  test:
+    name: tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev,visa]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Type check
+        # Advisory: this is a gradual-typing gate, not a merge gate. It is
+        # reported rather than enforced so the badge means "the tests pass",
+        # which is a claim worth making, instead of "nobody added an Any".
+        continue-on-error: true
+        run: mypy hiltf
+
+      - name: Unit + integration tests
+        run: pytest -q
+
+      - name: Robot suites (in-process bench)
+        run: robot --outputdir reports/ci hiltf/layer1_suites
+
+      - name: Pure-Python end-to-end demo
+        run: python examples/run_all.py
+
+      - name: Upload Robot report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: robot-report-py${{ matrix.python-version }}
+          path: reports/ci
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------
+  # The containerised bench. The emulator is a service; the runners are
+  # separate containers reaching it over the compose network. This is the job
+  # that proves the drivers work over a real wire between real processes,
+  # rather than against an in-process listener.
+  # ---------------------------------------------------------------------
+  docker:
+    name: containerised bench
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker compose build
+
+      - name: Test suite inside the image
+        run: docker compose run --rm tests
+
+      - name: Suites over raw TCP/SCPI + binary UDP
+        run: docker compose run --rm socket-runner
+
+      - name: Suites over PyVISA (pyvisa-py -> bench emulator)
+        run: docker compose run --rm visa-runner
+
+      - name: Bench emulator logs
+        if: always()
+        run: docker compose logs bench
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+      - name: Upload container reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-reports
+          path: reports/
+          if-no-files-found: ignore

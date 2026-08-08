@@ -1,0 +1,71 @@
+# ---------------------------------------------------------------------------
+# THE SOCKET BENCH — raw TCP/SCPI instruments + the DUT's binary UDP protocol.
+#
+# Identical suites, identical plans, identical expectations as
+# bench_config.yaml. The only difference is which driver each role gets, and
+# that difference lives entirely in this file.
+#
+# Start the other end first:
+#     python -m hiltf.emulators
+#
+# Then:
+#     robot --variable CONFIG:config/bench_socket.yaml hiltf/layer1_suites
+#
+# Point `address` at a real instrument and this same file drives real hardware.
+# ---------------------------------------------------------------------------
+
+bench:
+  name: "HIL Bench over raw TCP/SCPI + binary UDP"
+  simulate: false
+
+instruments:
+  # All three instrument roles are served by one emulator process here, as a
+  # small rack behind one LAN gateway would be. On a real bench each would
+  # carry its own address; nothing else changes.
+  signal_generator:
+    driver: lan_signal_generator
+    address: ${HILTF_BENCH_HOST:-127.0.0.1}
+    port: 5025
+    timeout_s: 10
+
+  multimeter:
+    driver: lan_multimeter
+    address: ${HILTF_BENCH_HOST:-127.0.0.1}
+    port: 5025
+    timeout_s: 10
+
+  oscilloscope:
+    driver: lan_oscilloscope
+    address: ${HILTF_BENCH_HOST:-127.0.0.1}
+    port: 5025
+    # A gated capture plus a ~1 MB binary block transfer needs more headroom
+    # than a scalar query.
+    timeout_s: 30
+
+  # The DUT is not a SCPI instrument. It speaks its firmware's own
+  # little-endian binary protocol over UDP, on its own port.
+  dut:
+    driver: udp_dut
+    address: ${HILTF_BENCH_HOST:-127.0.0.1}
+    port: 50000
+    timeout_s: 2
+    retries: 3
+
+# Only the emulator reads this block — it is the behaviour of the device on the
+# other end of the socket. A real bench would simply have real hardware there
+# and this section would be inert.
+simulation:
+  volts_to_amps: 10.0
+  voltage_channel: 1
+  current_channel: 2
+
+  overcurrent_trigger_a: 200.0
+  overcurrent_detect_ms: 1200.0
+  overcurrent_hold_s: 3.08
+
+  harmonic_trigger_a: 1.5
+  harmonic_detect_ms: 1130.0
+  harmonic_hold_s: 3.20
+
+  analog_output_gain_error: 0.03
+  relay_high_v: 3.3

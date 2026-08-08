@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>5 · Config &amp; plans</title>
+<link rel="stylesheet" href="book.css" />
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <div class="brand">HIL <span>Book</span></div>
+  <div class="sub">The framework, taught from the code</div>
+  <a href="index.html">Cover &amp; contents</a>
+  <div class="grp">Foundations</div>
+  <a href="ch1.html">1 · The big picture</a>
+  <a href="ch2.html">2 · OOP building blocks</a>
+  <div class="grp">The layers</div>
+  <a href="ch3.html">3 · Layer 3 — the HAL</a>
+  <a href="ch4.html">4 · The simulated bench</a>
+  <a href="ch5.html">5 · Config &amp; plans</a>
+  <a href="ch6.html">6 · Event bus &amp; reporting</a>
+  <a href="ch7.html">7 · The keyword algorithms</a>
+  <div class="grp">Putting it together</div>
+  <a href="ch8.html">8 · Robot suites &amp; end-to-end</a>
+</nav>
+<main class="main">
+  <p class="tag">Chapter 5</p>
+  <h1>Config &amp; plans — data instead of code</h1>
+  <p>Two kinds of external data steer the framework: one <b>bench config</b> (which bench)
+  and many <b>plans</b> (which scenarios). Editing them re-targets the framework without
+  touching Python.</p>
+
+  <h2>The bench config, validated on load</h2>
+  <p>From <code>config_loader.py</code>. It reads YAML and fails <em>loudly</em> if the shape
+  is wrong — a typo should stop you at load time, not mid-test:</p>
+<pre><code class="python">def load_config(path: str | Path) -> BenchConfig:
+    data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+    for key in ("bench", "instruments", "simulation"):
+        _require(data, key, "top level")
+    sim_raw = data["simulation"]
+    sim = SimConfig(
+        volts_to_amps=float(sim_raw.get("volts_to_amps", 10.0)),
+        overcurrent_trigger_a=float(sim_raw.get("overcurrent_trigger_a", 200.0)),
+        ...
+    )
+    return BenchConfig(name=..., simulate=..., instruments=..., sim=sim, raw=data)</code></pre>
+
+  <div class="box why"><b>Why turn YAML into a <code>BenchConfig</code> dataclass?</b>
+  Raw dictionaries invite typos (<code>cfg["trigger"]</code> vs <code>cfg["triger"]</code>).
+  A dataclass gives named, typed fields the editor can check — the config becomes a real
+  object, not a bag of strings.</p>
+
+  <h2>A plan is a table of scenarios</h2>
+  <p><code>config/overcurrent_plan.csv</code>:</p>
+<pre><code class="python">name,enabled,trigger,tolerance_pct,detect_max_ms,hold_min_s
+slow_ac,true,200,3,2000,3
+fast_dc,false,500,3,10,3
+validation_ac,false,350,3,1500,3</code></pre>
+  <p>Loaded into <code>Scenario</code> objects by <code>plan.py</code>, which also rejects
+  duplicate names and keeps any extra columns:</p>
+<pre><code class="python">if name in seen:
+    raise ValueError(f"plan {path.name}: duplicate scenario '{name}'")
+seen.add(name)</code></pre>
+
+  <div class="box analogy"><b>Analogy</b>
+  The plan is a recipe card; <code>enabled</code> is a sticky note saying "make this one
+  tonight". To cook a different dish you swap cards, not the kitchen.</p>
+
+  <div class="box break"><b>What breaks with duplicate names</b>
+  Two rows called <code>slow_ac</code> would silently overwrite each other's results in the
+  report. The loader refuses them up front, so the mistake can't reach a run.</p>
+
+  <h2>Pure math, separately testable</h2>
+  <p>The spec comparisons are <em>pure functions</em> — no hardware, no state — so they can
+  be unit-tested directly:</p>
+<pre><code class="python">def tolerance_window(trigger: float, tolerance_pct: float) -> tuple[float, float]:
+    delta = trigger * tolerance_pct / 100.0
+    return trigger - delta, trigger + delta
+
+def timing_ok(measured_ms: float, limit_ms: float) -> bool:
+    return 0.0 &lt; measured_ms &lt;= limit_ms</code></pre>
+
+  <div class="box why"><b>Why keep these pure?</b>
+  Pure functions are the easiest code to trust: give inputs, check outputs, done. See
+  <code>tests/unit/test_plan.py</code> — the whole spec logic is verified without a bench.</p>
+
+  <h3>Key concepts introduced</h3>
+  <p class="pillrow"><span>data-driven design</span><span>fail-fast validation</span><span>pure functions</span><span>dataclass over dict</span></p>
+
+  <div class="quiz">
+    <details><summary>Quiz 1 — To run the framework against a new device, what do you change?</summary>
+    <p>The YAML config (bench + simulated behaviour) and the CSV plans (scenarios). No Python.</p></details>
+    <details><summary>Quiz 2 — Why are <code>tolerance_window</code> and <code>timing_ok</code> free functions, not methods on a bench?</summary>
+    <p>They're pure spec maths with no hardware dependency, so they belong where they can be
+    tested in isolation and reused by any test type.</p></details>
+  </div>
+
+  <div class="exercise"><b>Exercise 5.</b>
+  Flip <code>fast_dc</code> to <code>enabled=true</code> in the overcurrent plan and run the
+  example. Watch a second scenario appear in the report. Then set an impossible
+  <code>detect_max_ms</code> (say 10) and see it fail — the plan drove the outcome, not the code.</div>
+
+  <div class="nav"><a href="ch4.html">← 4 · The simulated bench</a><a href="ch6.html">6 · Event bus &amp; reporting →</a></div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

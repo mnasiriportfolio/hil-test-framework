@@ -1,0 +1,14 @@
+# Convenience only — `pip install -e ".[dev,visa]"` is the supported path and
+# pyproject.toml is the source of truth for dependencies.
+PyYAML>=6.0
+robotframework>=6.0
+
+# PyVISA transport (all pure Python; no NI-VISA or other vendor runtime needed)
+PyVISA>=1.13
+PyVISA-sim>=0.6
+PyVISA-py>=0.7
+
+# tooling
+pytest>=7.4
+ruff>=0.4
+mypy>=1.8

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>1 · The big picture</title>
+<link rel="stylesheet" href="book.css" />
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <div class="brand">HIL <span>Book</span></div>
+  <div class="sub">The framework, taught from the code</div>
+  <a href="index.html">Cover &amp; contents</a>
+  <div class="grp">Foundations</div>
+  <a href="ch1.html">1 · The big picture</a>
+  <a href="ch2.html">2 · OOP building blocks</a>
+  <div class="grp">The layers</div>
+  <a href="ch3.html">3 · Layer 3 — the HAL</a>
+  <a href="ch4.html">4 · The simulated bench</a>
+  <a href="ch5.html">5 · Config &amp; plans</a>
+  <a href="ch6.html">6 · Event bus &amp; reporting</a>
+  <a href="ch7.html">7 · The keyword algorithms</a>
+  <div class="grp">Putting it together</div>
+  <a href="ch8.html">8 · Robot suites &amp; end-to-end</a>
+</nav>
+<main class="main">
+  <p class="tag">Chapter 1</p>
+  <h1>The big picture</h1>
+
+  <h2>What are we building?</h2>
+  <p>A <b>Hardware-in-the-Loop (HIL) test framework</b>: software that stimulates a piece
+  of measurement hardware, watches how it responds, and decides pass or fail — automatically.
+  In this project the hardware is <em>simulated</em>, so the whole thing runs on any laptop.</p>
+
+  <div class="box analogy"><b>Analogy</b>
+  It's an automated exam for a device. We ask a question (drive a signal), watch the
+  answer (read instruments), and grade it against an answer key (the spec in a plan file).</p>
+
+  <h2>The three layers</h2>
+  <p>The code is split into three layers, and the golden rule is that <b>knowledge only
+  flows downward</b> — each layer knows less about the hardware than the one beneath it.</p>
+
+<pre><code class="python">Layer 1  hiltf/layer1_suites/   Robot Framework specs — the test intent
+              |  (calls keywords by name)
+Layer 2  hiltf/layer2_engine/   the engine: plans, algorithms, event bus, reports
+              |  (calls Protocol interfaces only)
+Layer 3  hiltf/layer3_hal/      the Hardware Abstraction Layer + drivers</code></pre>
+
+  <table>
+    <tr><th>Layer</th><th>Knows about</th><th>Never knows about</th></tr>
+    <tr><td>1 · Suites</td><td>test intent, keyword names</td><td>Python, channels, addresses</td></tr>
+    <tr><td>2 · Engine</td><td>the HAL interfaces, spec math</td><td>which transport, IPs, SCPI strings</td></tr>
+    <tr><td>3 · HAL</td><td>the real instrument / simulation</td><td>which test is running</td></tr>
+  </table>
+
+  <div class="box why"><b>Why separate them at all?</b>
+  Because the reasons a test <em>changes</em> are different from the reasons the
+  <em>hardware</em> changes. If test intent and wiring details live in the same file,
+  every new bench is a rewrite. Separate them, and moving to a new bench touches one
+  config file — nothing else.</p>
+
+  <div class="box break"><b>What breaks if you ignore this</b>
+  Put an IP address in a Robot suite and you've welded that test to one bench. Read a
+  raw voltage in the engine and Layer 2 suddenly "knows" about volts-to-amps calibration
+  that belongs in Layer 3. The seams are the whole point.</p>
+
+  <h2>A measurement's journey</h2>
+  <p>Follow one overcurrent test from top to bottom and back:</p>
+  <ol>
+    <li>A <code>.robot</code> file (Layer 1) says <code>Run All Cases  overcurrent  ...plan.csv</code>.</li>
+    <li>The engine (Layer 2) loads the plan, then for each scenario drives the signal
+        generator and reads the oscilloscope — all through <em>interfaces</em>.</li>
+    <li>The HAL (Layer 3) turns "drive a sine" into changes on the simulated bench, and
+        "capture the relay" into a waveform.</li>
+    <li>The engine finds the rising edge, compares timing to spec, and <em>publishes</em>
+        a result to the event bus.</li>
+    <li>The recorder, subscribed to the bus, collects results and renders a report.</li>
+  </ol>
+  <p>Every chapter that follows zooms into one of these steps.</p>
+
+  <h3>Key concepts introduced</h3>
+  <p class="pillrow"><span>separation of concerns</span><span>abstraction layer</span><span>dependency direction</span></p>
+
+  <div class="quiz">
+    <details><summary>Quiz 1 — Which layer is allowed to contain an IP address or NI resource name?</summary>
+    <p>Only <b>Layer 3 (the HAL)</b>. It is the single place that knows how an instrument
+    is actually reached. Layers 1 and 2 speak in abstractions.</p></details>
+    <details><summary>Quiz 2 — Why can the same test run against a simulator and real hardware?</summary>
+    <p>Because Layer 2 only ever calls <b>interfaces</b>, not concrete drivers. A simulated
+    driver and a real driver both satisfy the interface, so they're interchangeable.</p></details>
+  </div>
+
+  <div class="exercise"><b>Exercise 1.</b>
+  Open the repo and list the files under <code>hiltf/</code>. For each one, write a single
+  sentence naming its layer and its job. You should end up with a one-line map of the
+  whole framework — keep it; it's your cheat-sheet for the rest of the book.</div>
+
+  <div class="nav"><a href="index.html">← Cover</a><a href="ch2.html">2 · OOP building blocks →</a></div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

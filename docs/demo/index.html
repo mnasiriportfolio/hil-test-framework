@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HIL Test Framework — Interactive Demo</title>
+<style>
+  :root{
+    --bg:#0e1726; --panel:#152238; --panel2:#1b2b45; --ink:#e6edf6; --muted:#9fb0c8;
+    --teal:#2ec7c0; --navy:#1f6feb; --pass:#37d67a; --check:#f4b740; --fail:#ff5c73;
+    --line:#26374f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  header{padding:22px 28px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#12203a,#0e1726)}
+  header h1{margin:0;font-size:20px}
+  header p{margin:4px 0 0;color:var(--muted)}
+  a{color:var(--teal)}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 28px}
+  .tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .tab{padding:9px 16px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--muted);cursor:pointer}
+  .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:20px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .card h3{margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--teal)}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  select,input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--ink)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sub{font-size:11px;color:var(--muted);margin:2px 0 0}
+  button.run{margin-top:16px;width:100%;padding:11px;border:0;border-radius:9px;background:var(--teal);color:#04231f;font-weight:700;cursor:pointer;font-size:15px}
+  button.run:hover{filter:brightness(1.08)}
+  canvas{width:100%;height:280px;background:#0a1220;border:1px solid var(--line);border-radius:10px}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .pill{padding:2px 9px;border-radius:20px;font-weight:700;font-size:12px}
+  .PASS{background:rgba(55,214,122,.15);color:var(--pass)}
+  .CHECK{background:rgba(244,183,64,.15);color:var(--check)}
+  .FAIL{background:rgba(255,92,115,.15);color:var(--fail)}
+  .verdict{font-size:18px;font-weight:800;margin:6px 0 0}
+  .note{color:var(--muted);font-size:13px;margin-top:10px}
+  pre{background:#0a1220;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font:13px/1.5 "SFMono-Regular",Consolas,monospace;color:#cfe3ff}
+  textarea{width:100%;height:300px;background:#0a1220;color:#cfe3ff;border:1px solid var(--line);border-radius:10px;padding:12px;font:13px/1.5 Consolas,monospace}
+  .hidden{display:none}
+  .badge{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:3px 11px;font-size:12px;color:var(--muted);margin-left:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>HIL Test Framework — Interactive Demo <span class="badge">simulated bench, no hardware</span></h1>
+  <p>Change the plan (spec) or the device (simulated reality) and watch the test run: oscilloscope timing, tolerance checks, self-calibration. <a href="../index.html">← project hub</a></p>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-tab="js">▶ Interactive simulator</div>
+    <div class="tab" data-tab="py">🐍 Run the real Python (Pyodide)</div>
+  </div>
+
+  <!-- ============ JS SIMULATOR ============ -->
+  <section id="tab-js">
+    <div class="grid">
+      <div class="card">
+        <h3>Controls</h3>
+        <label>Test</label>
+        <select id="test">
+          <option value="overcurrent">Overcurrent detection</option>
+          <option value="harmonic">Harmonic detection</option>
+          <option value="analog">Analog-output correctness</option>
+        </select>
+
+        <label>Calibration — amps per Vrms (bench)</label>
+        <input id="v2a" type="number" value="10" step="0.5" />
+
+        <div class="two">
+          <div>
+            <label>Plan: trigger (A)</label>
+            <input id="trigger" type="number" value="200" step="1" />
+            <p class="sub">the spec value</p>
+          </div>
+          <div>
+            <label>Plan: tolerance (%)</label>
+            <input id="tol" type="number" value="3" step="0.5" />
+          </div>
+        </div>
+
+        <div id="timingBox">
+          <div class="two">
+            <div>
+              <label>Plan: max detect (ms)</label>
+              <input id="detectMax" type="number" value="2000" step="50" />
+            </div>
+            <div>
+              <label>Plan: min hold (s)</label>
+              <input id="holdMin" type="number" value="3" step="0.1" />
+            </div>
+          </div>
+          <div class="two">
+            <div>
+              <label>Device: real detect (ms)</label>
+              <input id="detectReal" type="number" value="1200" step="50" />
+              <p class="sub">simulated reality</p>
+            </div>
+            <div>
+              <label>Device: real hold (s)</label>
+              <input id="holdReal" type="number" value="3.08" step="0.05" />
+            </div>
+          </div>
+        </div>
+
+        <div id="analogBox" class="hidden">
+          <label>Device: analog gain error (%)</label>
+          <input id="gainErr" type="number" value="3" step="0.5" />
+          <p class="sub">the self-cal discovers & corrects this</p>
+        </div>
+
+        <button class="run" id="runJs">Run test</button>
+        <p class="note">Tip: make the device's real detect time exceed the plan's max, or set gain error above tolerance, to see a CHECK/FAIL.</p>
+      </div>
+
+      <div class="card">
+        <h3>Oscilloscope + report</h3>
+        <canvas id="scope" width="760" height="280"></canvas>
+        <div id="verdict" class="verdict"></div>
+        <table id="report"><thead><tr><th>#</th><th>Check</th><th>Expected</th><th>Measured</th><th>Outcome</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PYODIDE ============ -->
+  <section id="tab-py" class="hidden">
+    <div class="grid">
+      <div class="card">
+        <h3>The real engine, in your browser</h3>
+        <p class="note">This tab boots <a href="https://pyodide.org" target="_blank" rel="noopener">Pyodide</a> (CPython compiled to WebAssembly) and runs the framework's actual simulation + keyword logic — the same Python that runs in CI. First run downloads the runtime (~a few MB), so give it a moment.</p>
+        <button class="run" id="runPy">Boot Python & run</button>
+        <p id="pyStatus" class="note"></p>
+      </div>
+      <div class="card">
+        <h3>Editable Python</h3>
+        <textarea id="pyCode"></textarea>
+        <h3 style="margin-top:16px">Output</h3>
+        <pre id="pyOut">(not run yet)</pre>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- The real engine core, embedded so the Pyodide tab runs actual Python.
+     Mirrors hiltf/layer3_hal/simulation.py + hiltf/layer2_engine/keywords.py. -->
+<script id="engine-py" type="text/x-python">
+import math
+
+SQRT2 = math.sqrt(2.0)
+
+class SimConfig:
+    def __init__(self, volts_to_amps=10.0, overcurrent_trigger_a=200.0,
+                 overcurrent_detect_ms=1200.0, overcurrent_hold_s=3.08,
+                 harmonic_trigger_a=1.5, harmonic_detect_ms=1130.0, harmonic_hold_s=3.20,
+                 analog_output_gain_error=0.03):
+        self.volts_to_amps = volts_to_amps
+        self.overcurrent_trigger_a = overcurrent_trigger_a
+        self.overcurrent_detect_ms = overcurrent_detect_ms
+        self.overcurrent_hold_s = overcurrent_hold_s
+        self.harmonic_trigger_a = harmonic_trigger_a
+        self.harmonic_detect_ms = harmonic_detect_ms
+        self.harmonic_hold_s = harmonic_hold_s
+        self.analog_output_gain_error = analog_output_gain_error
+
+def rms_of_sine(vpp):        return vpp / (2.0 * SQRT2)
+def vpp_for_current(a, v2a): return (a / v2a) * 2.0 * SQRT2
+
+def tolerance_window(trigger, tol_pct):
+    d = trigger * tol_pct / 100.0
+    return trigger - d, trigger + d
+
+def within_tol(m, trigger, tol_pct):
+    lo, hi = tolerance_window(trigger, tol_pct); return lo <= m <= hi
+
+def rising_edge_ms(samples, dt_s, threshold=1.65):
+    for i, v in enumerate(samples):
+        if v >= threshold:
+            return i * dt_s * 1000.0
+    return float("inf")
+
+def scope_capture(edge_ms, gate_ms, sample_rate=100000.0):
+    dt = 1.0 / sample_rate
+    n = int((gate_ms / 1000.0) / dt)
+    ei = int((edge_ms / 1000.0) / dt) if edge_ms != float("inf") else n + 1
+    return dt, [3.3 if i >= ei else 0.0 for i in range(n)]
+
+def run_overcurrent(cfg, trigger, tol_pct, detect_max_ms, hold_min_s):
+    steps = []
+    measured = trigger                              # generator driven to the trigger
+    lo, hi = tolerance_window(trigger, tol_pct)
+    steps.append(("Trigger level", f"{trigger:g} A ({lo:.1f}-{hi:.1f})",
+                  f"{measured:.2f} A", "PASS" if within_tol(measured, trigger, tol_pct) else "FAIL"))
+    dt, wf = scope_capture(cfg.overcurrent_detect_ms, detect_max_ms + 500)
+    t = rising_edge_ms(wf, dt)
+    steps.append(("Detection time (scope)", f"<= {detect_max_ms:g} ms",
+                  f"{t:.1f} ms", "PASS" if 0 < t <= detect_max_ms else "FAIL"))
+    steps.append(("Relay hold", f">= {hold_min_s:g} s",
+                  f"{cfg.overcurrent_hold_s:.2f} s",
+                  "PASS" if cfg.overcurrent_hold_s >= hold_min_s else "FAIL"))
+    return steps
+
+def run_analog(cfg, requested, tol_pct):
+    steps = []
+    out = requested * (1.0 + cfg.analog_output_gain_error)
+    err = abs(out - requested) / requested * 100.0
+    ok = err <= tol_pct
+    steps.append(("CH1 output error (pre-cal)", f"<= {tol_pct:g} %",
+                  f"{err:.2f} %", "PASS" if ok else "CHECK"))
+    if not ok:
+        corr = requested / out
+        out2 = out * corr
+        err2 = abs(out2 - requested) / requested * 100.0
+        steps.append(("CH1 auto-calibration", "apply correction, error <= tol",
+                      f"factor {corr:.4f} -> {err2:.2f} %", "PASS" if err2 <= tol_pct else "FAIL"))
+    return steps
+
+def verdict(steps):
+    outs = {s[3] for s in steps}
+    return "FAIL" if "FAIL" in outs else ("CHECK" if "CHECK" in outs else "PASS")
+
+def show(title, steps):
+    print(title)
+    print("-" * len(title))
+    for i, (c, e, m, o) in enumerate(steps, 1):
+        print(f"{i}. {c:32s} expected {e:22s} measured {m:22s} -> {o}")
+    print(f"=> {verdict(steps)}\n")
+</script>
+
+<script>
+  // ---------- tab switching ----------
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-js').classList.toggle('hidden', t.dataset.tab !== 'js');
+    document.getElementById('tab-py').classList.toggle('hidden', t.dataset.tab !== 'py');
+  }));
+
+  // ---------- JS simulator (mirror of the Python math) ----------
+  const SQRT2 = Math.SQRT2;
+  const $ = id => document.getElementById(id);
+  const val = id => parseFloat($(id).value);
+
+  function toleranceWindow(t, tol){ const d = t*tol/100; return [t-d, t+d]; }
+  function scopeEdge(edgeMs, gateMs){ return edgeMs <= gateMs ? edgeMs : Infinity; }
+
+  function compute(){
+    const test = $('test').value;
+    const tol = val('tol'), trigger = val('trigger');
+    if(test === 'analog'){
+      const err = val('gainErr');
+      const ok = err <= tol;
+      const steps = [['CH1 output error (pre-cal)', `<= ${tol}%`, `${err.toFixed(2)}%`, ok?'PASS':'CHECK']];
+      let edge = Infinity;
+      if(!ok){
+        const corr = 1/(1+err/100);
+        const err2 = Math.abs((1+err/100)*corr - 1)*100;
+        steps.push(['CH1 auto-calibration', 'error <= tol', `factor ${corr.toFixed(4)} → ${err2.toFixed(2)}%`, err2<=tol?'PASS':'FAIL']);
+      }
+      return {steps, edge, gate:2000, current:trigger};
+    }
+    const detectMax = val('detectMax'), holdMin = val('holdMin');
+    const detectReal = val('detectReal'), holdReal = val('holdReal');
+    const [lo,hi] = toleranceWindow(trigger, tol);
+    const t = scopeEdge(detectReal, detectMax + 500);
+    const steps = [
+      ['Trigger level', `${trigger}A (${lo.toFixed(1)}-${hi.toFixed(1)})`, `${trigger.toFixed(2)}A`, 'PASS'],
+      ['Detection time (scope)', `<= ${detectMax}ms`, isFinite(t)?`${t.toFixed(1)}ms`:'no edge', (isFinite(t)&&t<=detectMax)?'PASS':'FAIL'],
+      ['Relay hold', `>= ${holdMin}s`, `${holdReal.toFixed(2)}s`, holdReal>=holdMin?'PASS':'FAIL'],
+    ];
+    return {steps, edge:t, gate:detectMax, current:trigger};
+  }
+
+  function verdict(steps){
+    const o = new Set(steps.map(s=>s[3]));
+    return o.has('FAIL')?'FAIL':(o.has('CHECK')?'CHECK':'PASS');
+  }
+
+  function drawScope(edgeMs, gateMs){
+    const cv = $('scope'), ctx = cv.getContext('2d');
+    const W = cv.width, H = cv.height;
+    ctx.clearRect(0,0,W,H);
+    // grid
+    ctx.strokeStyle = '#1a2b45'; ctx.lineWidth = 1;
+    for(let i=0;i<=10;i++){ const x=i/10*W; ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+    for(let i=0;i<=6;i++){ const y=i/6*H; ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+    const span = gateMs + 500;
+    const xOf = ms => (ms/span)*W;
+    // relay step
+    ctx.strokeStyle = '#2ec7c0'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    const yLow = H*0.8, yHigh = H*0.25;
+    ctx.moveTo(0,yLow);
+    if(isFinite(edgeMs) && edgeMs<=span){
+      ctx.lineTo(xOf(edgeMs),yLow); ctx.lineTo(xOf(edgeMs),yHigh); ctx.lineTo(W,yHigh);
+    } else { ctx.lineTo(W,yLow); }
+    ctx.stroke();
+    // gate marker
+    ctx.strokeStyle = '#ff5c73'; ctx.setLineDash([6,5]); ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(xOf(gateMs),0); ctx.lineTo(xOf(gateMs),H); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#ff9db0'; ctx.font='12px monospace'; ctx.fillText(`gate ${gateMs}ms`, xOf(gateMs)+4, 16);
+    // edge cursor
+    if(isFinite(edgeMs) && edgeMs<=span){
+      ctx.strokeStyle='#f4b740'; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(xOf(edgeMs),0); ctx.lineTo(xOf(edgeMs),H); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='#f4b740'; ctx.fillText(`t = ${edgeMs.toFixed(0)}ms`, xOf(edgeMs)+4, H-8);
+    }
+    ctx.fillStyle='#9fb0c8'; ctx.font='12px monospace';
+    ctx.fillText('relay (0→3.3V)', 8, 16);
+  }
+
+  function render(){
+    const r = compute();
+    drawScope(r.edge, r.gate);
+    const tb = $('report').querySelector('tbody'); tb.innerHTML='';
+    r.steps.forEach((s,i)=>{
+      tb.insertAdjacentHTML('beforeend',
+        `<tr><td>${i+1}</td><td>${s[0]}</td><td>${s[1]}</td><td>${s[2]}</td><td><span class="pill ${s[3]}">${s[3]}</span></td></tr>`);
+    });
+    const v = verdict(r.steps);
+    $('verdict').innerHTML = `Result: <span class="pill ${v}">${v}</span>`;
+  }
+
+  $('test').addEventListener('change', ()=>{
+    const analog = $('test').value === 'analog';
+    $('analogBox').classList.toggle('hidden', !analog);
+    $('timingBox').classList.toggle('hidden', analog);
+    if($('test').value==='harmonic'){ $('trigger').value=1.5; $('tol').value=3; $('detectMax').value=2000; $('detectReal').value=1130; $('holdReal').value=3.20; }
+    if($('test').value==='overcurrent'){ $('trigger').value=200; $('detectReal').value=1200; $('holdReal').value=3.08; }
+    render();
+  });
+  $('runJs').addEventListener('click', render);
+  render();
+
+  // ---------- Pyodide tab ----------
+  const enginePy = document.getElementById('engine-py').textContent;
+  const defaultCall = `\n# Edit these numbers, then run.\ncfg = SimConfig(volts_to_amps=10.0,\n                overcurrent_trigger_a=200.0, overcurrent_detect_ms=1200.0, overcurrent_hold_s=3.08,\n                analog_output_gain_error=0.03)\n\nshow("Overcurrent (slow_ac)", run_overcurrent(cfg, trigger=200, tol_pct=3, detect_max_ms=2000, hold_min_s=3))\nshow("Analog output (ch1_50a)", run_analog(cfg, requested=50, tol_pct=1))\n`;
+  $('pyCode').value = defaultCall.trim();
+
+  let pyodideReady = null;
+  async function bootAndRun(){
+    const status = $('pyStatus'), out = $('pyOut');
+    if(!pyodideReady){
+      status.textContent = 'Loading Pyodide runtime…';
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js';
+      document.head.appendChild(s);
+      await new Promise((res,rej)=>{ s.onload=res; s.onerror=()=>rej(new Error('Could not load Pyodide (offline?). The Interactive simulator tab works without it.')); });
+      pyodideReady = await loadPyodide();
+      status.textContent = 'Runtime ready.';
+    }
+    try{
+      pyodideReady.runPython(enginePy);                 // define the real engine
+      pyodideReady.runPython(`import io,sys; sys.stdout=io.StringIO()`);
+      pyodideReady.runPython($('pyCode').value);         // run the user's calls
+      out.textContent = pyodideReady.runPython('sys.stdout.getvalue()');
+      status.textContent = 'Done — that was real CPython running in your browser.';
+    }catch(e){ out.textContent = String(e); status.textContent='Error.'; }
+  }
+  $('runPy').addEventListener('click', ()=>bootAndRun().catch(e=>{ $('pyStatus').textContent = e.message; }));
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# pyvisa-sim device definition — a VISA instrument with no instrument.
+#
+#   pyvisa.ResourceManager("hiltf/emulators/visa_sim.yaml@sim")
+#
+# WHAT THIS IS FOR, precisely: testing the *SCPI contract* of the PyVISA
+# drivers — that a driver sends the header it should and parses the reply it
+# gets — with no network, no vendor VISA runtime and no hardware. That is a
+# real class of bug (a wrong header, a locale-dependent float parse, a missing
+# termination) and it is worth catching in CI on every push.
+#
+# WHAT THIS IS NOT FOR: full scenario runs. pyvisa-sim answers from a static
+# table; it cannot know that driving 20 Vrms into the current channel should
+# make the meter read 200 A. Physics comes from the bench emulator instead
+# (`python -m hiltf.emulators`), which the same PyVISA drivers reach over
+# pyvisa-py — see config/bench_visa.yaml.
+#
+# Only queries are defined here. Commands the drivers write but this file does
+# not list (SOUR1:VOLT, OUTP1 ON, ...) are accepted and ignored, exactly as an
+# unsupported header would be — which is itself worth exercising, because a
+# driver must not hang or raise on one.
+# ---------------------------------------------------------------------------
+spec: "1.1"
+
+devices:
+  hiltf-bench:
+    # The drivers set read/write termination to "\n" explicitly (a ::SOCKET
+    # resource has no default), so the simulated end must agree.
+    eom:
+      ASRL INSTR:
+        q: "\n"
+        r: "\n"
+      TCPIP INSTR:
+        q: "\n"
+        r: "\n"
+      TCPIP SOCKET:
+        q: "\n"
+        r: "\n"
+      GPIB INSTR:
+        q: "\n"
+        r: "\n"
+
+    dialogues:
+      - q: "*IDN?"
+        r: "HILTF,BENCH-EMULATOR,0,1.0.0"
+
+      # The drivers synchronise with *OPC? after every configuration step, so
+      # the simulated device has to answer it or a configure_* call hangs
+      # until the VISA timeout.
+      - q: "*OPC?"
+        r: "1"
+
+      # Fixed readings, chosen to be recognisable in a failure message rather
+      # than realistic: any test asserting on them is asserting on the parse.
+      - q: "MEAS:VOLT:DC?"
+        r: "1500.000000"
+      - q: "MEAS:CURR:AC?"
+        r: "200.000000"
+      - q: "MEAS:CURR:AC:HARM?"
+        r: "1.500000"
+
+      - q: "OUTP1?"
+        r: "0"
+      - q: "OUTP2?"
+        r: "0"
+
+      - q: "SYST:ERR?"
+        r: '+0,"No error"'
+
+resources:
+  ASRL1::INSTR:
+    device: hiltf-bench

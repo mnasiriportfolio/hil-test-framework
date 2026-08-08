@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+
+# environments
+.venv/
+venv/
+env/
+
+# tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Robot Framework / test output.
+# `reports/` holds a committed sample run so the repository shows what the
+# output looks like without cloning and running it; the per-run subdirectories
+# the suites and Docker write are ignored.
+reports/docker-socket/
+reports/docker-visa/
+reports/ci/
+output.xml
+log.html
+report.html
+!reports/report.md
+!reports/*.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

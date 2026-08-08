@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>3 · Layer 3 — the HAL</title>
+<link rel="stylesheet" href="book.css" />
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <div class="brand">HIL <span>Book</span></div>
+  <div class="sub">The framework, taught from the code</div>
+  <a href="index.html">Cover &amp; contents</a>
+  <div class="grp">Foundations</div>
+  <a href="ch1.html">1 · The big picture</a>
+  <a href="ch2.html">2 · OOP building blocks</a>
+  <div class="grp">The layers</div>
+  <a href="ch3.html">3 · Layer 3 — the HAL</a>
+  <a href="ch4.html">4 · The simulated bench</a>
+  <a href="ch5.html">5 · Config &amp; plans</a>
+  <a href="ch6.html">6 · Event bus &amp; reporting</a>
+  <a href="ch7.html">7 · The keyword algorithms</a>
+  <div class="grp">Putting it together</div>
+  <a href="ch8.html">8 · Robot suites &amp; end-to-end</a>
+</nav>
+<main class="main">
+  <p class="tag">Chapter 3</p>
+  <h1>Layer 3 — the Hardware Abstraction Layer</h1>
+  <p>The HAL is the only layer that touches real instruments. It has two halves: the
+  <b>interfaces</b> (the promises) and the <b>drivers</b> (the objects that keep them).</p>
+
+  <h2>The four interfaces</h2>
+  <p>From <code>interfaces.py</code>, the vocabulary Layer 2 is allowed to use:</p>
+<pre><code class="python">class SignalGenerator(Instrument, Protocol):   # drives stimulus
+    def configure_sine(self, channel, amplitude_vpp, frequency_hz, offset_v=0.0): ...
+    def add_harmonic(self, channel, order, amplitude_vpp): ...
+    ...
+
+class Multimeter(Instrument, Protocol):        # reads scalars
+    def measure_dc_voltage(self) -> float: ...
+    def measure_ac_current_rms(self) -> float: ...
+
+class Oscilloscope(Instrument, Protocol):      # captures time-domain traces
+    def capture_relay(self, relay: str, gate_ms: float) -> Waveform: ...
+
+class DeviceUnderTest(Instrument, Protocol):   # the DUT's own telemetry
+    def get_relay_states(self) -> dict[str, bool]: ...
+    def read_analog_output(self, channel: int) -> float: ...</code></pre>
+
+  <div class="box why"><b>Why four, not one?</b>
+  Each role is a different job. Splitting them means a test that only needs a multimeter
+  doesn't depend on oscilloscope methods — smaller contracts, fewer surprises.</p>
+
+  <h2>A driver keeps a promise</h2>
+  <p>From <code>sim_drivers.py</code>. Notice it <em>extends</em> <code>BaseDriver</code>
+  (for the lifecycle) and happens to match the <code>SignalGenerator</code> protocol
+  (for Layer 2). The two are independent:</p>
+<pre><code class="python">class SimSignalGenerator(BaseDriver):
+    def __init__(self, bench: SimulatedBench, name: str = "SIM-AFG") -> None:
+        super().__init__(name)
+        self.bench = bench
+
+    def configure_sine(self, channel, amplitude_vpp, frequency_hz, offset_v=0.0):
+        self._require_connection()
+        ch = self.bench.channels[channel]
+        ch.waveform = "SIN"
+        ch.amplitude_vpp = amplitude_vpp
+        ch.frequency_hz = frequency_hz
+        ch.offset_v = offset_v</code></pre>
+
+  <div class="box analogy"><b>Analogy</b>
+  <code>BaseDriver</code> is the staff handbook every employee follows (clock in / clock out).
+  The <code>SignalGenerator</code> protocol is the job description for the "signal" role.
+  A real employee (<code>SimSignalGenerator</code>) does both.</p>
+
+  <div class="box break"><b>What breaks if a driver forgets a method</b>
+  Because the protocol is <code>@runtime_checkable</code>, a missing method means the object
+  no longer counts as a <code>SignalGenerator</code> — you find out immediately, not after
+  wiring it into a test.</p>
+
+  <h2>The swap that proves the point</h2>
+  <p>Every simulated driver shares one <code>SimulatedBench</code> (next chapter). To move to
+  real hardware you'd write, say, a <code>ScpiSignalGenerator(BaseDriver)</code> that sends
+  SCPI over a socket. Layer 2 would not change one line — it still just asks for a
+  "signal generator". <b>That</b> is the payoff of the interfaces.</p>
+
+  <h3>Key concepts introduced</h3>
+  <p class="pillrow"><span>inheritance (extends)</span><span>super().__init__</span><span>composition (has-a bench)</span><span>role interfaces</span></p>
+
+  <div class="quiz">
+    <details><summary>Quiz 1 — <code>SimSignalGenerator</code> inherits <code>BaseDriver</code> but not <code>SignalGenerator</code>. How can Layer 2 accept it?</summary>
+    <p>Structural typing: it <em>has</em> the methods the <code>SignalGenerator</code> protocol
+    lists, so it satisfies the protocol without inheriting it.</p></details>
+    <details><summary>Quiz 2 — What does <code>super().__init__(name)</code> do here?</summary>
+    <p>Runs <code>BaseDriver.__init__</code> so the connection flag and name get set up before
+    the subclass adds its own <code>self.bench</code>.</p></details>
+  </div>
+
+  <div class="exercise"><b>Exercise 3.</b>
+  Sketch (just the method names) a <code>ScpiMultimeter(BaseDriver)</code> that would satisfy
+  the <code>Multimeter</code> protocol. You don't need real SCPI — the point is to see that
+  Layer 2 wouldn't notice the difference.</div>
+
+  <div class="nav"><a href="ch2.html">← 2 · OOP building blocks</a><a href="ch4.html">4 · The simulated bench →</a></div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

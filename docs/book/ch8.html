@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>8 · Robot suites &amp; end-to-end</title>
+<link rel="stylesheet" href="book.css" />
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <div class="brand">HIL <span>Book</span></div>
+  <div class="sub">The framework, taught from the code</div>
+  <a href="index.html">Cover &amp; contents</a>
+  <div class="grp">Foundations</div>
+  <a href="ch1.html">1 · The big picture</a>
+  <a href="ch2.html">2 · OOP building blocks</a>
+  <div class="grp">The layers</div>
+  <a href="ch3.html">3 · Layer 3 — the HAL</a>
+  <a href="ch4.html">4 · The simulated bench</a>
+  <a href="ch5.html">5 · Config &amp; plans</a>
+  <a href="ch6.html">6 · Event bus &amp; reporting</a>
+  <a href="ch7.html">7 · The keyword algorithms</a>
+  <div class="grp">Putting it together</div>
+  <a href="ch8.html">8 · Robot suites &amp; end-to-end</a>
+</nav>
+<main class="main">
+  <p class="tag">Chapter 8</p>
+  <h1>Robot suites &amp; the whole loop</h1>
+  <p>The top layer is where a non-programmer can read what's being tested. Robot Framework
+  files describe <em>intent</em>; a thin library connects that intent to the engine.</p>
+
+  <h2>Layer 1 reads like English</h2>
+  <p><code>hiltf/layer1_suites/overcurrent.robot</code>:</p>
+<pre><code class="python">*** Settings ***
+Library           HiltfLibrary.py
+Suite Setup       Open Bench
+Suite Teardown    Run Keywords    Write Report    reports/overcurrent.md    AND    Close Bench
+
+*** Test Cases ***
+Overcurrent Detection All Scenarios
+    Run All Cases      overcurrent    config/overcurrent_plan.csv
+    All Cases Passed</code></pre>
+
+  <div class="box why"><b>No Python, no addresses here.</b>
+  Everything concrete lives below. This file could be reviewed by a test engineer who never
+  writes code — which is exactly who often owns the test plan.</p>
+
+  <h2>The adapter bridges the two worlds</h2>
+  <p><code>HiltfLibrary.py</code> exposes engine calls as Robot keywords:</p>
+<pre><code class="python">@library(scope="SUITE")
+class HiltfLibrary:
+    def __init__(self) -> None:
+        self.bus = EventBus()
+        self.recorder = ReportRecorder(self.bus)
+
+    @keyword
+    def run_all_cases(self, kind: str, plan: str) -> None:
+        runner = _RUNNERS[kind]
+        for sc in enabled_scenarios(load_plan(_ROOT / plan)):
+            runner(self.controller, sc, self.bus)</code></pre>
+
+  <div class="box analogy"><b>Analogy</b>
+  The library is an interpreter at a meeting: the Robot file speaks "test language", the
+  engine speaks "Python", and the interpreter passes messages faithfully between them.</p>
+
+  <div class="box break"><b>Why <code>HiltfLibrary.py</code> with the <code>.py</code>?</b>
+  Robot resolves a bare name on the module path; giving the path (with extension) makes it
+  load relative to the suite file, so the suites run from anywhere without extra setup.</p>
+
+  <h2>The whole loop, one picture</h2>
+<pre><code class="python">Open Bench            -> load_config -> InstrumentController builds 4 sim drivers
+Run All Cases         -> for each enabled Scenario: run_*_case(controller, sc, bus)
+    keyword           ->   drive SignalGenerator, read Multimeter / Oscilloscope / DUT
+    keyword           ->   publish("test.result", ...) to the EventBus
+ReportRecorder        -> (subscribed) collects every result, grades each case
+Write Report          -> render Markdown; All Cases Passed asserts no FAIL
+Close Bench           -> disconnect all drivers</code></pre>
+
+  <p>Run it three ways — all green:</p>
+<pre><code class="python">pytest -v                                   # 21 unit + integration tests
+robot --outputdir reports hiltf/layer1_suites   # 3 suites
+python examples/run_all.py                   # end-to-end -> Overall: PASS</code></pre>
+
+  <h2>Capstone exercises</h2>
+  <div class="exercise"><b>Capstone A — a new instrument.</b>
+  Add a <code>SimPowerSupply</code> driver (voltage in, current-limit out) that shares the
+  bench, plus a <code>PowerSupply</code> protocol. Wire it into the controller. Prove Layer 2
+  didn't need to change to gain a new instrument.</div>
+  <div class="exercise"><b>Capstone B — a new test type.</b>
+  Add a <code>run_ripple_case</code> keyword and a <code>ripple_plan.csv</code>, reusing the
+  event bus and recorder. Add a Robot suite for it. Notice you reused reporting for free.</div>
+  <div class="exercise"><b>Capstone C — a second report format.</b>
+  Add a JSON subscriber to the bus (Chapter 6) and emit <code>reports/report.json</code>
+  alongside the Markdown, without editing a single keyword.</div>
+
+  <h3>What you can now do</h3>
+  <p class="pillrow"><span>trace a measurement top-to-bottom</span><span>add an instrument</span><span>add a test</span><span>add an output</span><span>explain why the layers exist</span></p>
+
+  <p>That's the framework — and the same shape scales straight up to real SCPI and NI-PXI
+  hardware by swapping Layer 3 drivers. Everything you learned here still holds.</p>
+
+  <div class="nav"><a href="ch7.html">← 7 · The keyword algorithms</a><a href="index.html">Back to cover →</a></div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

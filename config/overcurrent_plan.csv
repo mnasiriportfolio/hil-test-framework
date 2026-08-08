@@ -1,0 +1,4 @@
+name,enabled,trigger,tolerance_pct,detect_max_ms,hold_min_s,harmonic_order,dut_channel
+slow_ac,true,200,3,2000,3,,
+fast_dc,false,500,3,10,3,,
+validation_ac,false,350,3,1500,3,,

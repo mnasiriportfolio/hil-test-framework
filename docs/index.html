@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HIL Test Framework</title>
+<style>
+  :root{--bg:#0b1220;--ink:#eaf1fb;--muted:#9fb2cc;--teal:#2ec7c0;--navy:#3b82f6;--line:#1e2f49}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#13233f,#0b1220);color:var(--ink);
+       font:16px/1.6 -apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:960px;margin:0 auto;padding:70px 26px 90px}
+  .tag{color:var(--muted);letter-spacing:.3em;text-transform:uppercase;font-size:12px}
+  h1{font-size:clamp(32px,6vw,58px);margin:.15em 0 .2em;line-height:1.08}
+  .grad{background:linear-gradient(90deg,var(--teal),var(--navy));-webkit-background-clip:text;background-clip:text;color:transparent}
+  p.lead{font-size:clamp(16px,2.2vw,21px);color:var(--muted);max-width:720px}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:38px 0}
+  @media(max-width:760px){.cards{grid-template-columns:1fr}}
+  a.card{display:block;text-decoration:none;color:var(--ink);background:#101d33;border:1px solid var(--line);
+         border-radius:16px;padding:22px;transition:.2s}
+  a.card:hover{transform:translateY(-3px);border-color:var(--teal)}
+  a.card .ic{font-size:30px} a.card h3{margin:12px 0 6px;color:var(--teal)}
+  a.card p{margin:0;color:var(--muted);font-size:14px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+  .row span{border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-size:13px;color:var(--muted);background:#101d33}
+  .foot{margin-top:40px;color:var(--muted);font-size:14px}
+  .foot a{color:var(--teal)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="tag">Portfolio project · fully simulated</p>
+  <h1>HIL Test <span class="grad">Framework</span></h1>
+  <p class="lead">A layered, config-driven Hardware-in-the-Loop test framework. One set of Robot
+  Framework suites, driven over four transports — an in-process simulation, raw TCP sockets
+  speaking SCPI, PyVISA, and a binary UDP protocol — selected by one YAML file. The suites never
+  learn which one they got, and the reports come out identical. Explore it three ways:</p>
+
+  <div class="cards">
+    <a class="card" href="presentation/index.html">
+      <div class="ic">▶</div><h3>Watch</h3>
+      <p>A self-playing animated walkthrough of the architecture and ideas.</p>
+    </a>
+    <a class="card" href="demo/index.html">
+      <div class="ic">🎛️</div><h3>Try it live</h3>
+      <p>Tweak a test and watch the scope + report update — or run the real Python in-browser.</p>
+    </a>
+    <a class="card" href="book/index.html">
+      <div class="ic">📘</div><h3>Learn it</h3>
+      <p>A teaching book that explains the whole codebase from the real files.</p>
+    </a>
+  </div>
+
+  <div class="row">
+    <span>Python</span><span>Robot Framework</span><span>Protocol-based HAL</span><span>SCPI over raw TCP</span>
+    <span>PyVISA</span><span>binary UDP protocol</span><span>IEEE 488.2 blocks</span><span>event bus</span>
+    <span>oscilloscope timing</span><span>self-calibration</span><span>Docker</span>
+    <span>ruff · mypy · pytest · GitHub Actions</span>
+  </div>
+
+  <p class="foot">Source &amp; docs on GitHub. This is a clean-room demonstration project — it
+  contains no proprietary code or device details. <a href="../README.md">README</a></p>
+</div>
+</body>
+</html>

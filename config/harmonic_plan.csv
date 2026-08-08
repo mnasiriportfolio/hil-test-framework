@@ -1,0 +1,4 @@
+name,enabled,trigger,tolerance_pct,detect_max_ms,hold_min_s,harmonic_order,dut_channel
+dc_1500v_50hz,true,1.5,3,2000,3,3,
+alt_3000v_50hz,false,1.5,3,2000,3,3,
+validation_3000v,false,1.0,3,3000,3,5,

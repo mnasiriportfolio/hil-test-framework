@@ -1,0 +1,96 @@
+# ---------------------------------------------------------------------------
+# THE CONTAINERISED BENCH.
+#
+#   docker compose up --abort-on-container-exit socket-runner
+#   docker compose run --rm visa-runner
+#   docker compose run --rm tests
+#
+# `bench` is the instruments and the device under test, as network services:
+# SCPI on 5025/tcp, the DUT's binary protocol on 50000/udp. The runners are
+# clients. Nothing shares a Python object with anything — the drivers reach the
+# bench over the container network, the same way they would reach a rack.
+#
+# Which is the point. A test suite that only ever runs in one process proves the
+# logic; it cannot prove the driver, because there is no wire for the driver to
+# get wrong. Here there is a wire, and it is the same wire in CI as on a desk.
+#
+# WHY THE INSTRUMENTS AND THE DUT SHARE ONE CONTAINER: they share one simulated
+# bench. What the generator drives has to be what the DUT's relays react to, so
+# the state has to be in one place. Splitting them into two containers would
+# mean two unrelated simulations and a DUT that never trips.
+# ---------------------------------------------------------------------------
+
+x-image: &image
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: hil-test-framework:local
+
+services:
+
+  # --- the bench ----------------------------------------------------------
+  bench:
+    <<: *image
+    container_name: hiltf-bench
+    command: ["python", "-m", "hiltf.emulators"]
+    environment:
+      HILTF_BENCH_CONFIG: config/bench_config.yaml
+      HILTF_SCPI_PORT: "5025"
+      HILTF_DUT_PORT: "50000"
+      HILTF_LOG_LEVEL: INFO
+    ports:
+      # published so you can point a local pytest or Robot run at the container
+      - "5025:5025"
+      - "50000:50000/udp"
+    healthcheck:
+      # Probes BOTH protocols. `depends_on` alone only waits for the container
+      # to start; a runner that connects half a second early fails in a way
+      # that looks exactly like a driver bug.
+      test: ["CMD", "python", "-m", "hiltf.emulators.healthcheck"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 2s
+
+  # --- runners ------------------------------------------------------------
+  # Raw TCP sockets for the instruments, binary UDP for the DUT.
+  socket-runner:
+    <<: *image
+    depends_on:
+      bench:
+        condition: service_healthy
+    environment:
+      HILTF_BENCH_HOST: bench      # consumed by ${HILTF_BENCH_HOST:-127.0.0.1}
+    volumes:
+      - ./reports:/app/reports
+    command: >
+      robot --outputdir reports/docker-socket
+            --variable CONFIG:config/bench_socket.yaml
+            hiltf/layer1_suites
+
+  # The same suites, the same bench, reached through PyVISA (pyvisa-py) —
+  # no vendor VISA runtime, no hardware, one YAML file different.
+  visa-runner:
+    <<: *image
+    depends_on:
+      bench:
+        condition: service_healthy
+    environment:
+      HILTF_BENCH_HOST: bench
+    volumes:
+      - ./reports:/app/reports
+    command: >
+      robot --outputdir reports/docker-visa
+            --variable CONFIG:config/bench_visa.yaml
+            hiltf/layer1_suites
+
+  # --- the self-contained suite ------------------------------------------
+  # Needs no bench service: these tests start their own emulator in-process on
+  # ephemeral ports. Here to prove the image is a reproducible dev environment.
+  tests:
+    <<: *image
+    command: ["pytest", "-q"]
+
+  lint:
+    <<: *image
+    command: ["ruff", "check", "."]

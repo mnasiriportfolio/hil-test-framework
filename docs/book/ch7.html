@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>7 · The keyword algorithms</title>
+<link rel="stylesheet" href="book.css" />
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <div class="brand">HIL <span>Book</span></div>
+  <div class="sub">The framework, taught from the code</div>
+  <a href="index.html">Cover &amp; contents</a>
+  <div class="grp">Foundations</div>
+  <a href="ch1.html">1 · The big picture</a>
+  <a href="ch2.html">2 · OOP building blocks</a>
+  <div class="grp">The layers</div>
+  <a href="ch3.html">3 · Layer 3 — the HAL</a>
+  <a href="ch4.html">4 · The simulated bench</a>
+  <a href="ch5.html">5 · Config &amp; plans</a>
+  <a href="ch6.html">6 · Event bus &amp; reporting</a>
+  <a href="ch7.html">7 · The keyword algorithms</a>
+  <div class="grp">Putting it together</div>
+  <a href="ch8.html">8 · Robot suites &amp; end-to-end</a>
+</nav>
+<main class="main">
+  <p class="tag">Chapter 7</p>
+  <h1>The keyword algorithms — the brain</h1>
+  <p>This is where a test <em>happens</em>: drive stimulus, read instruments, decide, publish.
+  The keywords in <code>keywords.py</code> speak only interface methods and the event bus —
+  never a volt or an IP.</p>
+
+  <h2>Finding an edge on the scope</h2>
+  <p>Detection timing comes from the first sample that crosses half of the 0→3.3&nbsp;V relay
+  swing:</p>
+<pre><code class="python">def rising_edge_ms(wf: Waveform, threshold_v: float = 1.65) -> float:
+    for i, v in enumerate(wf.samples):
+        if v &gt;= threshold_v:
+            return i * wf.dt_s * 1000.0
+    return float("inf")   # no crossing -> no edge</code></pre>
+
+  <div class="box analogy"><b>Analogy</b>
+  It's a stopwatch that starts at capture and stops the instant the relay "lights up". Return
+  <code>inf</code> and the timing check reads "the light never came on".</p>
+
+  <h2>The overcurrent test, end to end</h2>
+<pre><code class="python">def run_overcurrent_case(controller, sc, bus) -> None:
+    sg, dmm, osc = controller.signal_generator, controller.multimeter, controller.oscilloscope
+    ch = controller.config.sim.current_channel
+
+    sg.configure_sine(ch, _vpp_for_current(controller, sc.trigger), 50.0)
+    sg.output_on(ch)
+    measured = dmm.measure_ac_current_rms()
+    trig_ok = within_tolerance(measured, sc.trigger, sc.tolerance_pct)
+    _publish(bus, suite, case, "Trigger level", ..., _outcome(trig_ok))
+
+    wf = osc.capture_relay("overcurrent", gate_ms=sc.detect_max_ms + 500.0)
+    t_ms = rising_edge_ms(wf)
+    _publish(bus, suite, case, "Detection time (scope)", ...,
+             _outcome(timing_ok(t_ms, sc.detect_max_ms)))</code></pre>
+
+  <div class="box why"><b>Notice what's absent.</b>
+  No volts-to-amps, no socket, no NI call. <code>_vpp_for_current</code> converts a target
+  current to generator volts using the bench calibration, but the keyword itself just asks a
+  <code>SignalGenerator</code> and an <code>Oscilloscope</code> to do their jobs.</p>
+
+  <h2>Self-calibration — the clever bit</h2>
+  <p>The analog-output test measures error, and if it's too big it <em>fixes the device</em>
+  and re-checks — reporting both steps honestly:</p>
+<pre><code class="python">err_pct = abs(out - requested) / requested * 100.0
+ok = err_pct &lt;= sc.tolerance_pct
+_publish(bus, ..., "output error (pre-cal)", ..., _outcome(ok, borderline=True))  # PASS or CHECK
+
+if not ok:
+    correction = requested / out
+    dut.apply_analog_correction(correction)
+    out2 = dut.read_analog_output(channel)
+    err2 = abs(out2 - requested) / requested * 100.0
+    _publish(bus, ..., "auto-calibration", ..., _outcome(err2 &lt;= sc.tolerance_pct))</code></pre>
+
+  <div class="box why"><b>The test verifies the device — not the other way round.</b>
+  It measures reality, compares to the plan's spec, and flags mismatches as <code>CHECK</code>
+  rather than bending a number to make it pass. That honesty is the difference between a test
+  that protects you and one that lies to you.</p>
+
+  <div class="box break"><b>What breaks if you fudge a measurement to match spec</b>
+  A real defect sails through. The whole value of an automated bench is that it tells you the
+  uncomfortable truth every time — so the code is written to preserve that truth.</p>
+
+  <h3>Key concepts introduced</h3>
+  <p class="pillrow"><span>algorithm as a function</span><span>enumerate</span><span>closure over the bus</span><span>measure-then-correct</span></p>
+
+  <div class="quiz">
+    <details><summary>Quiz 1 — Why does <code>rising_edge_ms</code> return <code>inf</code> instead of, say, 0?</summary>
+    <p>0 would look like "detected instantly". <code>inf</code> is unmistakably "never
+    crossed", which <code>timing_ok</code> then correctly reports as a failure.</p></details>
+    <details><summary>Quiz 2 — Why is the pre-cal step a CHECK, not a FAIL, when out of tolerance?</summary>
+    <p>Because it's expected and about to be corrected. FAIL is reserved for a result the
+    framework can't fix; the post-cal step is the real PASS/FAIL.</p></details>
+  </div>
+
+  <div class="exercise"><b>Exercise 7.</b>
+  Add a harmonic scenario whose trigger sits right at the tolerance edge and predict the
+  outcome before running. Then run it. Did you get PASS or CHECK? Explain why in one sentence
+  using the words "measured" and "spec".</div>
+
+  <div class="nav"><a href="ch6.html">← 6 · Event bus &amp; reporting</a><a href="ch8.html">8 · Robot suites &amp; end-to-end →</a></div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

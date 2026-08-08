@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>2 · OOP building blocks</title>
+<link rel="stylesheet" href="book.css" />
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <div class="brand">HIL <span>Book</span></div>
+  <div class="sub">The framework, taught from the code</div>
+  <a href="index.html">Cover &amp; contents</a>
+  <div class="grp">Foundations</div>
+  <a href="ch1.html">1 · The big picture</a>
+  <a href="ch2.html">2 · OOP building blocks</a>
+  <div class="grp">The layers</div>
+  <a href="ch3.html">3 · Layer 3 — the HAL</a>
+  <a href="ch4.html">4 · The simulated bench</a>
+  <a href="ch5.html">5 · Config &amp; plans</a>
+  <a href="ch6.html">6 · Event bus &amp; reporting</a>
+  <a href="ch7.html">7 · The keyword algorithms</a>
+  <div class="grp">Putting it together</div>
+  <a href="ch8.html">8 · Robot suites &amp; end-to-end</a>
+</nav>
+<main class="main">
+  <p class="tag">Chapter 2</p>
+  <h1>OOP building blocks</h1>
+  <p>Before the layers, four object-oriented ideas the codebase leans on: <b>classes</b>,
+  <b>protocols</b> (interfaces), <b>context managers</b>, and <b>dataclasses</b>. We meet
+  each in a real file.</p>
+
+  <h2>A class = data + the behaviour that goes with it</h2>
+  <p>From <code>hiltf/layer3_hal/base_driver.py</code> — the parent every driver inherits:</p>
+<pre><code class="python">class BaseDriver:
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self._connected = False
+
+    def connect(self) -> None:
+        self._connected = True
+
+    def disconnect(self) -> None:
+        self._connected = False
+
+    def _require_connection(self) -> None:
+        if not self._connected:
+            raise RuntimeError(f"{self.name}: operation attempted before connect()")</code></pre>
+
+  <div class="box why"><b>Why <code>self</code>?</b>
+  A class is a template; an <em>instance</em> is one object made from it. <code>self</code>
+  is "this particular object", so <code>self._connected</code> is the connection flag for
+  <em>this</em> driver, separate from every other driver's flag.</p>
+
+  <div class="box analogy"><b>Analogy</b>
+  The class is the blueprint for a walkie-talkie; each instance is a physical unit. They
+  share the design (methods) but each has its own on/off switch (its own <code>self</code> state).</p>
+
+  <div class="box break"><b>What breaks without <code>_require_connection</code></b>
+  Call <code>measure()</code> before <code>connect()</code> on real hardware and you get a
+  confusing socket error deep in a driver. This guard fails early with a clear message —
+  a small habit that saves hours.</p>
+
+  <h2>The context manager — guaranteed cleanup</h2>
+  <p>Same file, the two "dunder" methods that make <code>with</code> work:</p>
+<pre><code class="python">    def __enter__(self) -> BaseDriver:
+        self.connect()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.disconnect()</code></pre>
+  <p>Now anyone can write:</p>
+<pre><code class="python">with controller as bench:      # __enter__ runs: everything connects
+    run_the_test(bench)
+# __exit__ runs automatically here: everything disconnects — even on error</code></pre>
+
+  <div class="box why"><b>Why bother?</b>
+  Instruments must be released whether the test passes, fails, or throws. <code>__exit__</code>
+  runs no matter what, so you can never "leak" a locked instrument session.</p>
+
+  <h2>A Protocol — an interface without inheritance</h2>
+  <p>From <code>hiltf/layer3_hal/interfaces.py</code>. A <code>Protocol</code> describes the
+  <em>shape</em> an object must have, without forcing it to inherit from anything:</p>
+<pre><code class="python">@runtime_checkable
+class SignalGenerator(Instrument, Protocol):
+    def configure_sine(self, channel: int, amplitude_vpp: float,
+                       frequency_hz: float, offset_v: float = 0.0) -> None: ...
+    def configure_dc(self, channel: int, level_v: float) -> None: ...
+    def output_on(self, channel: int) -> None: ...
+    def output_off(self, channel: int) -> None: ...</code></pre>
+
+  <div class="box why"><b>This is the hinge of the whole design.</b>
+  Layer 2 asks only for "something shaped like a <code>SignalGenerator</code>". A simulated
+  generator and a real SCPI generator both have these methods, so both qualify — and Layer 2
+  can't tell them apart. That's how one test runs on simulation <em>and</em> hardware.</p>
+
+  <div class="box analogy"><b>Analogy</b>
+  A power socket is a protocol. Any appliance with the right plug works; the wall doesn't
+  care if it's a lamp or a laptop charger. The plug <em>shape</em> is the contract.</p>
+
+  <h2>A dataclass — a labelled record, for free</h2>
+  <p>From <code>interfaces.py</code>, the captured waveform:</p>
+<pre><code class="python">@dataclass
+class Waveform:
+    dt_s: float
+    samples: list[float] = field(default_factory=list)
+
+    def times_s(self) -> list[float]:
+        return [i * self.dt_s for i in range(len(self.samples))]</code></pre>
+
+  <div class="box why"><b>Why <code>@dataclass</code>?</b>
+  The decorator writes the boilerplate <code>__init__</code> for you from the field list, so
+  <code>Waveform(dt_s=1e-6, samples=[...])</code> just works. <code>default_factory=list</code>
+  gives each instance its <em>own</em> empty list — a classic Python trap avoided.</p>
+
+  <h3>Key concepts introduced</h3>
+  <p class="pillrow"><span>class / instance / self</span><span>__enter__ / __exit__</span><span>Protocol (structural typing)</span><span>@dataclass</span></p>
+
+  <div class="quiz">
+    <details><summary>Quiz 1 — Does a simulated driver have to inherit from <code>SignalGenerator</code>?</summary>
+    <p>No. Because <code>SignalGenerator</code> is a <b>Protocol</b>, any object with the right
+    methods satisfies it structurally — inheritance is optional.</p></details>
+    <details><summary>Quiz 2 — When exactly does <code>__exit__</code> run?</summary>
+    <p>When the <code>with</code> block ends, for <b>any</b> reason — normal completion or an
+    exception. That's what makes it safe for releasing hardware.</p></details>
+    <details><summary>Quiz 3 — Why <code>default_factory=list</code> instead of <code>= []</code>?</summary>
+    <p>A bare <code>[]</code> default would be shared across all instances (a mutable-default
+    bug). The factory builds a fresh list per instance.</p></details>
+  </div>
+
+  <div class="exercise"><b>Exercise 2.</b>
+  In a Python shell, make a tiny class with <code>__enter__</code>/<code>__exit__</code> that
+  prints "open" and "close", and use it in a <code>with</code> block that raises an error in
+  the middle. Confirm "close" still prints. You've just proven why the drivers are context managers.</div>
+
+  <div class="nav"><a href="ch1.html">← 1 · The big picture</a><a href="ch3.html">3 · Layer 3 — the HAL →</a></div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>

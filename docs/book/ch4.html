@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>4 · The simulated bench</title>
+<link rel="stylesheet" href="book.css" />
+</head>
+<body>
+<div class="layout">
+<nav class="side">
+  <div class="brand">HIL <span>Book</span></div>
+  <div class="sub">The framework, taught from the code</div>
+  <a href="index.html">Cover &amp; contents</a>
+  <div class="grp">Foundations</div>
+  <a href="ch1.html">1 · The big picture</a>
+  <a href="ch2.html">2 · OOP building blocks</a>
+  <div class="grp">The layers</div>
+  <a href="ch3.html">3 · Layer 3 — the HAL</a>
+  <a href="ch4.html">4 · The simulated bench</a>
+  <a href="ch5.html">5 · Config &amp; plans</a>
+  <a href="ch6.html">6 · Event bus &amp; reporting</a>
+  <a href="ch7.html">7 · The keyword algorithms</a>
+  <div class="grp">Putting it together</div>
+  <a href="ch8.html">8 · Robot suites &amp; end-to-end</a>
+</nav>
+<main class="main">
+  <p class="tag">Chapter 4</p>
+  <h1>The simulated bench</h1>
+  <p>This is what makes the whole project runnable with no hardware. One object,
+  <code>SimulatedBench</code>, is the shared "reality": the drivers write to it and read
+  from it. It is <b>deterministic</b> — same inputs, same outputs — so tests never flake.</p>
+
+  <h2>The physics, in closed form</h2>
+  <p>From <code>simulation.py</code>. A sine's RMS is its peak-to-peak divided by
+  <code>2√2</code>; the current channel's volts map to amps by a calibration constant:</p>
+<pre><code class="python">def rms_v(self) -> float:
+    if not self.enabled or self.waveform != "SIN":
+        return 0.0
+    fund = self.amplitude_vpp / (2.0 * math.sqrt(2.0))
+    harm = math.sqrt(sum((vpp / (2.0 * math.sqrt(2.0))) ** 2
+                         for vpp in self.harmonics.values()))
+    return math.hypot(fund, harm)</code></pre>
+
+  <div class="box why"><b>Why closed-form instead of generating samples?</b>
+  We only need the <em>answer</em> (the RMS, the trip point), not a giant array. Closed-form
+  maths is exact and instant — perfect for deterministic tests. The oscilloscope <em>does</em>
+  build samples, but only because finding an edge needs a time axis.</p>
+
+  <h2>The DUT's decision</h2>
+<pre><code class="python">def current_rms_a(self) -> float:
+    ch = self.channels[self.cfg.current_channel]
+    return ch.rms_v() * self.cfg.volts_to_amps
+
+def overcurrent_tripped(self) -> bool:
+    return self.current_rms_a() &gt;= self.cfg.overcurrent_trigger_a</code></pre>
+
+  <div class="box analogy"><b>Analogy</b>
+  <code>SimulatedBench</code> is a flight simulator's physics engine. The yoke (signal
+  generator) doesn't move a real plane; it updates shared state, and every instrument in
+  the cockpit reads that same state consistently.</p>
+
+  <h2>The oscilloscope builds a trace</h2>
+  <p>From <code>sim_drivers.py</code> — the one place samples are actually generated, so an
+  edge exists to be found:</p>
+<pre><code class="python">def capture_relay(self, relay: str, gate_ms: float) -> Waveform:
+    self._require_connection()
+    dt = 1.0 / self.sample_rate_hz
+    n = int((gate_ms / 1000.0) / dt)
+    tripped = self.bench.relay_states().get(relay, False)
+    edge_ms = self.bench.detection_time_ms(relay) if tripped else float("inf")
+    edge_idx = int((edge_ms / 1000.0) / dt)
+    samples = [3.3 if i &gt;= edge_idx else 0.0 for i in range(n)]
+    return Waveform(dt_s=dt, samples=samples)</code></pre>
+
+  <div class="box break"><b>What breaks if the relay never trips</b>
+  <code>edge_ms</code> becomes <code>inf</code>, <code>edge_idx</code> lands past the end,
+  and every sample is <code>0.0</code> — no edge. The timing keyword then reports "no edge",
+  which is exactly the right failure to see when a device doesn't respond.</p>
+
+  <h2>Self-calibration lives here too</h2>
+<pre><code class="python">def analog_output_a(self, channel: int, requested_a: float) -> float:
+    raw = requested_a * (1.0 + self.cfg.analog_output_gain_error)
+    return raw * self.analog_correction</code></pre>
+  <p>The DUT reproduces its input with a gain error. A test can later write
+  <code>analog_correction</code> to cancel it — the mechanism behind Chapter 7's self-cal.</p>
+
+  <h3>Key concepts introduced</h3>
+  <p class="pillrow"><span>shared mutable state</span><span>determinism</span><span>generator expressions</span><span>list comprehensions</span></p>
+
+  <div class="quiz">
+    <details><summary>Quiz 1 — Why must the simulation be deterministic?</summary>
+    <p>So tests and CI give the same result every run. Randomness would make a passing test
+    occasionally fail for no real reason ("flaky" tests).</p></details>
+    <details><summary>Quiz 2 — Where do real oscilloscope <em>samples</em> get created?</summary>
+    <p>Only in <code>capture_relay</code>. Everything else is closed-form scalars.</p></details>
+  </div>
+
+  <div class="exercise"><b>Exercise 4.</b>
+  In <code>tests/unit/test_simulation.py</code>, add a case: enable the current channel, set an
+  amplitude that gives exactly the trigger current, and assert <code>overcurrent_tripped()</code>
+  flips from <code>False</code> to <code>True</code> as you cross it.</div>
+
+  <div class="nav"><a href="ch3.html">← 3 · Layer 3 — the HAL</a><a href="ch5.html">5 · Config &amp; plans →</a></div>
+</main>
+</div>
+<script src="book.js"></script>
+</body>
+</html>
